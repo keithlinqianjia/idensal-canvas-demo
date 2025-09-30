@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>idensal — Canvas Demo (Full, Offline)</title>
+<style>
+  :root{--bg:#f8fafc;--fg:#0f172a;--muted:#64748b;--card:#ffffff;--line:#e2e8f0;--accent:#111827}
+  *{box-sizing:border-box} html,body{height:100%} body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial}
+  .app{max-width:420px;margin:16px auto;border:1px solid var(--line);border-radius:24px;background:#fff;box-shadow:0 10px 30px rgba(2,6,23,.06);overflow:hidden}
+  .phone{height:780px;display:flex;flex-direction:column}
+  .bar{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.96);backdrop-filter:saturate(1.2) blur(4px)}
+  .bar .title{font-weight:700;letter-spacing:.2px}
+  .search{margin:8px 16px;display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:16px;padding:8px 12px;background:#fff;box-shadow:0 4px 10px rgba(2,6,23,.03)}
+  .search input{border:0;outline:0;width:100%;font-size:14px;color:#111827}
+  .chips{display:flex;gap:8px;overflow:auto;padding:0 16px 8px 16px}
+  .chip{flex:none;border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 10px;font-size:13px}
+  .map{position:relative;inset:0;background:#e6f0ff;height:100%}
+  .map svg{position:absolute;inset:0;width:100%;height:100%}
+  .legend{margin:8px 16px;width:max-content;font-size:11px;color:#111827}
+  .legend .row{display:flex;align-items:center;gap:8px;margin:4px 0}
+  .pin{position:absolute;transform:translate(-50%,-100%);cursor:pointer}
+  .pin .label{font-size:12px;margin-bottom:-4px;font-weight:600;white-space:nowrap;text-shadow:0 1px 1px rgba(0,0,0,.15)}
+  .pin-dot{width:18px;height:18px;background:#facc15;border:2px solid #fff;border-radius:6px;box-shadow:0 3px 8px rgba(2,6,23,.25)}
+  .pin-evt{width:22px;height:22px}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);backdrop-filter:blur(4px);border-top:1px solid var(--line);border-radius:16px 16px 0 0;box-shadow:0 -10px 30px rgba(2,6,23,.1);padding:12px;max-height:60%;overflow:auto}
+  .handle{width:40px;height:6px;border-radius:999px;background:#d1d5db;margin:0 auto 8px auto}
+  .card{border:1px solid var(--line);background:#fff;border-radius:16px;padding:12px;margin-bottom:12px;box-shadow:0 2px 8px rgba(2,6,23,.04);cursor:pointer;display:flex;gap:12px;align-items:flex-start}
+  .avatar{width:48px;height:48px;border-radius:999px;background:#e5e7eb;display:grid;place-items:center;font-weight:600;color:#334155;flex:none}
+  .grow{flex:1;min-width:0}
+  .muted{color:var(--muted)}
+  .btn{border:1px solid var(--line);border-radius:12px;background:#fff;padding:8px 10px;font-size:12px;cursor:pointer}
+  .btn.primary{background:var(--accent);color:#fff;border-color:#000}
+  .content{position:relative;flex:1;overflow:hidden}
+  .scroll{position:absolute;inset:56px 0 56px 0;overflow:auto;background:#f8fafc}
+  .scroll.pad{padding:12px 16px}
+  .nav{display:grid;grid-template-columns:repeat(4,1fr);height:56px;border-top:1px solid var(--line);background:#fff}
+  .nav button{background:none;border:0;font-size:12px;color:#64748b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+  .nav button.active{color:#111827;font-weight:700}
+  .h14{height:56px}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;z-index:50}
+  .modal.open{display:block}
+  .sheet2{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);border-radius:20px 20px 0 0;max-height:88%;overflow:auto;box-shadow:0 -10px 30px rgba(2,6,23,.2)}
+  .sheet2 .hdr{position:sticky;top:0;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.96)}
+  .field{margin:8px 0}
+  .field input,.field textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:14px}
+  .row{display:flex;gap:8px}
+  .tag{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:12px;margin:0 6px 6px 0}
+  .list{display:block}
+  .inbox-item{border:1px solid var(--line);background:#fff;border-radius:16px;padding:12px;margin-bottom:8px}
+  .bubble{max-width:78%;border-radius:12px;padding:8px 10px;box-shadow:0 2px 6px rgba(2,6,23,.1);font-size:13px;margin:6px 0}
+  .bubble.me{background:#111827;color:#fff;border-bottom-right-radius:4px;margin-left:auto}
+  .bubble.you{background:#f1f5f9;color:#0f172a;border-bottom-left-radius:4px;margin-right:auto}
+  .btime{font-size:10px;opacity:.65;margin-top:4px}
+  .no-scrollbar::-webkit-scrollbar{display:none}
+  .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:#111827;color:#fff;padding:10px 14px;border-radius:12px;font-size:12px;display:none;z-index:60}
+  .toast.show{display:block}
+  .qr{width:160px;height:160px;background:#fff;border:1px solid var(--line);border-radius:12px;display:grid;place-items:center}
+  .qr small{color:#111827}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="phone">
+    <div class="content">
+      <div class="bar">
+        <div class="title">idensal</div>
+        <div class="muted" id="subtitle">your neighborhood</div>
+      </div>
+      <div class="scroll" id="tab-scroll"></div>
+      <div class="nav" id="nav">
+        <button data-tab="home" class="active"><div>🏠</div><div>Home</div></button>
+        <button data-tab="categories"><div>🗂️</div><div>Categories</div></button>
+        <button data-tab="chat"><div>💬</div><div>Chat</div></button>
+        <button data-tab="profile"><div>👤</div><div>Profile</div></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Profile modal (view only from Home pins/cards) -->
+<div class="modal" id="profile-modal" aria-hidden="true">
+  <div class="sheet2" role="dialog" aria-label="Profile">
+    <div class="hdr">
+      <button class="btn" id="pm-close">✕</button>
+      <div class="muted">Profile</div>
+      <span style="width:28px"></span>
+    </div>
+    <div id="pm-body" class="scroll pad" style="position:relative;inset:auto;max-height:calc(88vh - 56px);"></div>
+  </div>
+</div>
+
+<!-- Auth modal (Login/Signup -> Claim) -->
+<div class="modal" id="auth-modal" aria-hidden="true">
+  <div class="sheet2" role="dialog" aria-label="Authenticate">
+    <div class="hdr">
+      <div class="muted" id="auth-title">Log in</div>
+      <button class="btn" id="auth-close">✕</button>
+    </div>
+    <div id="auth-body" class="scroll pad" style="position:relative;inset:auto;max-height:calc(88vh - 56px);"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast">Copied</div>
+
+<script>
+/* ================= DATA ================= */
+const CATEGORIES = [
+  { name:"Cleaning", subs:["Carpet & upholstery","Household cleaning","End of tenancy clean","After builders clean","Gutter/soffit clean","Jet-wash patios/drives","Other"] },
+  { name:"Heating & Gas", subs:["Boiler service","CP12 (landlord)","Boiler repair callout","TRVs & balancing","System power flush","Smart thermostat fit","Other"] },
+  { name:"Plumbing", subs:["Emergency leaks","Toilet repair/replace","Shower valve swap","Tap swap (kitchen/bath)","Leak trace & repair","Outdoor tap install","Other"] },
+  { name:"Electrical & Smart", subs:["EICR (inspection)","Consumer unit upgrade","Electric shower fit","Oven/hob connection","Security/PIR lighting","EV charger install","Other"] },
+  { name:"Roofing & Gutters", subs:["Gutter clear/repair","Moss remove & treat","Soffit/fascia repair","Velux/skylight reseal","Roof leak repair","Other"] },
+  { name:"Windows & Doors", subs:["Misted unit replace","Composite door fit","Reseal & draught-proof","Lock/hinge/handle fix","Align/adjust doors","Conservatory repairs","Other"] },
+  { name:"Joinery & Finishes", subs:["Plaster/skimming","Tiling (kitchen/bath)","Doors/skirting/arches","Stud wall/partition","Laminate/LVT flooring","Painting & decorating","Other"] },
+  { name:"Handyman", subs:["Draught-proof doors","Silicone/grout refresh","Patch & paint touch-ups","Door plane/hinge/latch","Blinds/curtain tracks","TV mount & shelving","Other"] },
+  { name:"Gardens & Driveways", subs:["Hedge cut/reduce","Jet-wash drive/patio","Fence/post repair","Garden clear-out","Decking build/repair","Driveway repairs","Other"] },
+  { name:"Removals & Waste", subs:["Man & van (hourly)","Student/flat moves","Furniture dis/re-assemble","Bulky waste / HIPPO","House/loft/garage clear","Other"] },
+  { name:"Care (Children & Elderly)", subs:["Babysitting","Holiday/backup cover","SEN-aware support","Elderly companionship","Personal care visits","Other"] },
+  { name:"Events", subs:["Food & Drink","Food trucks","Markets","Experiences","Other"] },
+  { name:"Others", subs:["Others"] },
+];
+const PROS = [
+  { handle:"sparkle.clean", displayName:"Sparkle Clean", title:"End-of-tenancy specialist", distance:"0.4", short:"Deep clean • Windows", cat:"Cleaning", coords:{x:32,y:52}, about:"Move-out deep cleans with guaranteed checklist." },
+  { handle:"deepgloss.clean", displayName:"Deep Gloss", title:"Deep Clean Team", distance:"0.6", short:"Deep clean • Carpets", cat:"Cleaning", coords:{x:45,y:40}, about:"Steam & eco products." },
+  { handle:"mr-fixit", displayName:"Mr Fixit", title:"Emergency plumber 24/7", distance:"0.7", short:"Leaks • Drains", cat:"Plumbing", coords:{x:42,y:68}, about:"Gas Safe partner network." },
+  // Events -> Food & Drink demos
+  { handle:"westend.winetaste", displayName:"West End Wine Tasting", title:"Sommelier-led tasting • Food & Drink", distance:"0.5", short:"Wine tasting • Old vs New World", cat:"Events", coords:{x:58,y:44}, about:"Guided flights with a certified sommelier. Cheese pairings included." },
+  { handle:"cellar.club", displayName:"The Cellar Club", title:"Pop-up natural wine night • Food & Drink", distance:"0.9", short:"Natural & biodynamic wines", cat:"Events", coords:{x:66,y:58}, about:"Monthly pop-up focusing on low-intervention producers." },
+];
+const TAKEN = ["sparkleclean","idensal","admin","support","test"];
+
+/* ================= STORAGE ================= */
+const LS_USER = "idensal.user";
+const loadUser = () => { try { return JSON.parse(localStorage.getItem(LS_USER)||"null"); } catch(e){ return null; } };
+const saveUser = (u) => { try { localStorage.setItem(LS_USER, JSON.stringify(u)); } catch(e){} };
+const clearUser = () => { try { localStorage.removeItem(LS_USER); } catch(e){} };
+
+/* ================= UTIL ================= */
+const $ = (sel, el=document) => el.querySelector(sel);
+const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+const miles = (n) => Number(n||0);
+function setHash(tab){ const h="#"+tab; if(location.hash!==h){ history.replaceState(null,"",h+location.search); } }
+function toast(msg){ const t=$("#toast"); t.textContent=msg||"Done"; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1200); }
+function copy(text){ navigator.clipboard.writeText(text).then(()=>toast("Copied")).catch(()=>toast("Copy failed")); }
+function buildQR(text){
+  // Tiny inline QR: fallback blocky pattern (not a full QR encoder; demo only)
+  const box = document.createElement("div"); box.className="qr";
+  const s = document.createElement("small"); s.textContent="QR"; box.appendChild(s);
+  return box;
+}
+
+/* ================= PROFILE MODAL ================= */
+function openProfile(handle){
+  const data = PROS.find(x=>x.handle===handle);
+  if(!data) return;
+  const body = $("#pm-body");
+  body.innerHTML = `
+    <div class="row" style="align-items:center;gap:12px">
+      <div class="avatar" style="width:64px;height:64px;font-size:16px">${(data.displayName||'U').slice(0,1)}</div>
+      <div class="grow">
+        <div class="muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@${data.handle}.uk</div>
+        <div style="font-weight:700;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${data.displayName}</div>
+        <div class="muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${data.title||''}</div>
+        <div class="muted" style="font-size:12px;margin-top:4px">Distance: ${data.distance} mi • Category: ${data.cat}</div>
+      </div>
+      <button class="btn" id="pm-msg">💬 Message</button>
+      <button class="btn" id="pm-nav">🧭 Navigate</button>
+    </div>
+    <div class="field"><div style="font-weight:700;margin-bottom:6px">About</div><div>${data.about||'—'}</div></div>
+    <div class="field"><div style="font-weight:700;margin-bottom:6px">Photos</div>
+      <div class="row" style="flex-wrap:wrap">
+        ${[1,2,3,4,5,6].map(()=>`<div style="width:32%;height:80px;background:#e5e7eb;border-radius:12px;margin-bottom:8px"></div>`).join('')}
+      </div>
+    </div>
+    <div class="field"><div style="font-weight:700;margin-bottom:6px">Categories</div>
+      <span class="tag">${data.cat}</span>
+    </div>
+  `;
+  $("#pm-nav").onclick=()=>{
+    const label = data.displayName || ('@'+data.handle+'.uk');
+    window.open('https://maps.google.com/?q='+encodeURIComponent(label),'_blank');
+  };
+  $("#pm-msg").onclick=()=>{ setTab('chat'); };
+  $("#profile-modal").classList.add("open");
+}
+$("#pm-close").addEventListener("click", ()=> $("#profile-modal").classList.remove("open"));
+$("#profile-modal").addEventListener("click", (e)=>{ if(e.target.id==="profile-modal") $("#profile-modal").classList.remove("open"); });
+
+/* ================= AUTH MODAL ================= */
+const Auth = { step:"auth", mode:"login", form:{email:"",password:"",username:""}, checking:false, taken:false };
+function openAuth(next){
+  Auth.next = next || null;
+  Auth.step = "auth"; Auth.mode="login"; Auth.form={email:"",password:"",username:""}; Auth.checking=false; Auth.taken=false;
+  drawAuth(); $("#auth-modal").classList.add("open");
+}
+function closeAuth(){ $("#auth-modal").classList.remove("open"); }
+$("#auth-close").addEventListener("click", closeAuth);
+
+function drawAuth(){
+  const body=$("#auth-body");
+  $("#auth-title").textContent = (Auth.step==="auth" ? (Auth.mode==="login"?"Log in":"Sign up") : "Claim your username");
+  if(Auth.step==="auth"){
+    body.innerHTML = `
+      <div class="row" style="gap:8px">
+        <button class="btn ${Auth.mode==='login'?'primary':''}" id="a-login">Log in</button>
+        <button class="btn ${Auth.mode==='signup'?'primary':''}" id="a-signup">Sign up</button>
+      </div>
+      <div class="field"><div>Email</div><input id="a-email" placeholder="you@email.com" value="${Auth.form.email}"></div>
+      <div class="field"><div>Password</div><input id="a-pass" type="password" placeholder="••••••••" value="${Auth.form.password}"></div>
+      <div class="row"><button class="btn" disabled> Apple</button><button class="btn" disabled>🔵 Google</button></div>
+      <button class="btn primary" id="a-continue" ${(Auth.form.email && Auth.form.password)?'':'disabled'}>${Auth.mode==='login'?'Continue':'Create account'}</button>
+    `;
+    $("#a-login").onclick=()=>{ Auth.mode='login'; drawAuth(); };
+    $("#a-signup").onclick=()=>{ Auth.mode='signup'; drawAuth(); };
+    $("#a-email").oninput=(e)=>{ Auth.form.email=e.target.value; drawAuth(); };
+    $("#a-pass").oninput=(e)=>{ Auth.form.password=e.target.value; drawAuth(); };
+    $("#a-continue").onclick=()=>{ Auth.step = (Auth.mode==='signup') ? 'claim':'finish'; if(Auth.step==='finish'){ finishAuth({ username:"demo.user" }); } else drawAuth(); };
+    return;
+  }
+  if(Auth.step==="claim"){
+    const valid = /^[a-z0-9_.]{3,20}$/i.test(Auth.form.username||"");
+    const taken = (Auth.form.username||"").trim() && TAKEN.includes((Auth.form.username||"").toLowerCase());
+    body.innerHTML = `
+      <div style="font-weight:700;margin-bottom:6px">Claim your public handle</div>
+      <div class="muted" style="font-size:12px;margin-bottom:8px">Use letters, numbers, _ or . (3–20 chars). Example: <span style="font-family:ui-monospace,monospace">keith.sutherland</span>.uk</div>
+      <div class="row" style="align-items:center">
+        <span class="btn" style="border-top-right-radius:0;border-bottom-right-radius:0;pointer-events:none">@</span>
+        <input id="a-username" value="${Auth.form.username||''}" class="field" style="flex:1;border-radius:0" placeholder="sparkle.clean">
+        <span class="btn" style="border-top-left-radius:0;border-bottom-left-radius:0;pointer-events:none">.uk</span>
+      </div>
+      ${ Auth.form.username ? (!valid ? `<div class="muted" style="color:#b91c1c">Username must be 3–20 characters (letters, numbers, _ or .)</div>`
+                                     : (taken ? `<div class="muted" style="color:#b91c1c">That username is taken. Try another.</div>`
+                                              : `<div class="muted" style="color:#166534">✅ Available</div>`)) : ''}
+      <button class="btn primary" id="a-finish" ${(valid && !taken)?'':'disabled'}>Finish</button>
+    `;
+    $("#a-username").oninput=(e)=>{ Auth.form.username=e.target.value; drawAuth(); };
+    $("#a-finish").onclick=()=> finishAuth({ username:Auth.form.username });
+  }
+}
+function finishAuth({username}){
+  const u = { email:Auth.form.email, username:username||"demo.user", displayName:"Sparkle Clean", headline:"End‑of‑tenancy specialist", about:"Professional home & Airbnb cleaners." };
+  saveUser(u); AppState.user = u;
+  $("#auth-modal").classList.remove("open");
+  if(Auth.next === 'openProfile'){ setTab('profile'); }
+  if(Auth.next && Auth.next.type==='message' && Auth.next.pro){ setTab('chat'); }
+}
+
+/* ================= APP STATE ================= */
+const AppState = {
+  tab:'home',
+  selectedCat:'',
+  filtered: PROS.slice(),
+  user: loadUser(), // null or object
+  publish:true,
+  shareLink:'', // filled when share is used
+};
+function setTab(tab){
+  AppState.tab = tab;
+  $$('#nav button').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
+  setHash(tab);
+  if(tab==='home') renderHome();
+  else if(tab==='categories') renderCategories();
+  else if(tab==='chat') renderChat();
+  else if(tab==='profile') renderProfile();
+}
+
+/* ================= RENDER: HOME ================= */
+function renderHome(){
+  $('#subtitle').textContent = 'your neighborhood';
+  const el = $('#tab-scroll'); el.className = 'scroll';
+  const list = (AppState.selectedCat ? PROS.filter(p=>p.cat===AppState.selectedCat) : PROS).slice().sort((a,b)=>miles(a.distance)-miles(b.distance));
+  el.innerHTML = `
+    <div class="map" id="map">
+      <svg xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="100%" height="100%" fill="#e6f0ff"/>
+        <g stroke="#c5d6f5" stroke-width="2" fill="none" opacity="0.9">
+          <path d="M0,40 C120,60 200,20 420,60" />
+          <path d="M0,200 C160,180 260,220 420,200" />
+          <path d="M60,0 C80,120 140,160 160,300" />
+          <path d="M300,0 C280,100 260,220 240,320" />
+        </g>
+        <g stroke="#d8e5fb" stroke-width="1" fill="none">
+          <path d="M0,120 L420,120" />
+          <path d="M0,260 L420,260" />
+          <path d="M120,0 L120,360" />
+          <path d="M360,0 L360,360" />
+        </g>
+      </svg>
+      ${list.map(p => `
+        <div class="pin" style="left:${(p.coords?.x||50)}%; top:${(p.coords?.y||50)}%">
+          <div class="label" style="color:${p.cat==='Events' ? '#0B3D91' : '#F59E0B'}">@${p.handle}.uk</div>
+          ${p.cat==='Events'
+            ? `<svg class="pin-evt" viewBox="0 0 24 24"><path d="M12 22s6-7 6-12a6 6 0 10-12 0c0 5 6 12 6 12z" fill="#0B3D91"/><circle cx="12" cy="10" r="3" fill="#ffffff"/></svg>`
+            : `<div class="pin-dot" data-handle="${p.handle}" title="${p.displayName}"></div>`}
+        </div>
+      `).join('')}
+      <div class="legend">
+        <div class="row"><svg width="18" height="18" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="20" height="20" rx="4" fill="#FACC15" stroke="#ffffff" stroke-width="2"/></svg><span>area</span></div>
+        <div class="row"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 22s6-7 6-12a6 6 0 10-12 0c0 5 6 12 6 12z" fill="#0B3D91"/><circle cx="12" cy="10" r="3.2" fill="#ffffff"/></svg><span>exact</span></div>
+      </div>
+      <div class="sheet" id="results-sheet">
+        <div class="handle"></div>
+        ${list.map(p => `
+          <div class="card" data-handle="${p.handle}">
+            <div class="avatar">${(p.displayName||'U').slice(0,1)}</div>
+            <div class="grow">
+              <div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@${p.handle}.uk</div>
+              <div class="muted" style="margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.title}</div>
+              <div style="margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.short||''}</div>
+            </div>
+            <div style="text-align:right;flex:none">
+              <div class="muted" style="font-size:12px">${p.distance} mi</div>
+              <button class="btn" data-nav="${p.handle}">🧭 Navigate</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    <div class="search"><span>🔎</span><input placeholder="key words (e.g., cleaner, boiler engineer)"></div>
+    <div class="chips">
+      <button class="chip" data-more="1">➕ More</button>
+      <button class="chip">🧹 Cleaning</button>
+      <button class="chip">🛠️ Handyman</button>
+      <button class="chip">🚚 Removals & Waste</button>
+    </div>
+  `;
+  // interactions
+  $$('.pin-dot', el).forEach(dot => dot.addEventListener('click', () => openProfile(dot.dataset.handle)));
+  $$('.card', el).forEach(c => c.addEventListener('click', () => openProfile(c.dataset.handle)));
+  $$('.btn[data-nav]', el).forEach(b => b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const p = PROS.find(x=>x.handle===b.dataset.nav);
+    const label = p?.displayName || ('@'+b.dataset.nav+'.uk');
+    window.open('https://maps.google.com/?q='+encodeURIComponent(label),'_blank');
+  }));
+  $('[data-more]', el).onclick = ()=> setTab('categories');
+}
+
+/* ================= RENDER: CATEGORIES ================= */
+function renderCategories(){
+  $('#subtitle').textContent = 'browse categories';
+  const el = $('#tab-scroll'); el.className = 'scroll pad';
+  el.innerHTML = `
+    <div class="search"><span>🔎</span><input id="cat-q" placeholder="Search categories & subs"></div>
+    <div id="cat-list"></div>
+  `;
+  const cont = $('#cat-list');
+  function draw(q=''){
+    cont.innerHTML = CATEGORIES.filter(cat =>
+      !q || cat.name.toLowerCase().includes(q) || (cat.subs||[]).some(s=>s.toLowerCase().includes(q))
+    ).map((cat,i)=>`
+      <div class="list" style="border:1px solid var(--line);background:#fff;border-radius:16px;margin-bottom:12px;overflow:hidden">
+        <div class="row" style="justify-content:space-between;align-items:center;padding:12px">
+          <button class="btn" data-open="${i}" style="background:none;border:none;font-weight:600;cursor:pointer">${cat.name}</button>
+          <label class="row" style="align-items:center;font-size:12px"><input type="checkbox" data-choose="${cat.name}"> Choose</label>
+          <button class="btn" data-toggle="${i}" style="width:32px;text-align:center">+</button>
+        </div>
+        <div class="subs" data-pane="${i}" style="display:none;padding:0 12px 12px 12px">
+          ${(cat.subs||[]).filter(s=>!q || s.toLowerCase().includes(q)).map(s=>`<button class="chip" data-pick="${cat.name}">${s}</button>`).join('')}
+        </div>
+      </div>
+    `).join('');
+    $$('[data-toggle]').forEach(btn => btn.addEventListener('click', ()=>{
+      const pane = $(`[data-pane="${btn.dataset.toggle}"]`, cont); pane.style.display = pane.style.display==='none' ? 'block' : 'none';
+      btn.textContent = pane.style.display==='none' ? '+' : '–';
+    }));
+    $$('[data-open]').forEach(btn => btn.addEventListener('click', ()=>{
+      const pane = $(`[data-pane="${btn.dataset.open}"]`, cont); pane.style.display = pane.style.display==='none' ? 'block' : 'none';
+      const tgl = $(`[data-toggle="${btn.dataset.open}"]`, cont); tgl.textContent = pane.style.display==='none' ? '+' : '–';
+    }));
+    $$('[data-choose]').forEach(chk => chk.addEventListener('change', ()=>{})); // demo choose
+    $$('[data-pick]').forEach(b => b.addEventListener('click', ()=>{
+      AppState.selectedCat = b.dataset.pick; setTab('home');
+    }));
+  }
+  draw();
+  $('#cat-q').addEventListener('input', (e)=> draw(e.target.value.trim().toLowerCase()));
+}
+
+/* ================= RENDER: CHAT ================= */
+function renderChat(){
+  $('#subtitle').textContent = 'in-app notifications';
+  const el = $('#tab-scroll'); el.className = 'scroll pad';
+  el.innerHTML = `
+    <div class="row" id="chat-tabs" style="gap:8px;margin-bottom:8px">
+      <button class="btn primary" data-chat="inbox">Inbox</button>
+      <button class="btn" data-chat="thread">Thread</button>
+    </div>
+    <div id="chat-body"></div>
+    <div class="h14"></div>
+  `;
+  const body = $('#chat-body', el);
+  const msgs = [
+    {me:false, text:'Hi! I found you on idensal.', time:'10:14'},
+    {me:true, text:'Thanks! What date suits?', time:'10:15'},
+  ];
+  function drawThread(){
+    body.innerHTML = `
+      <div class="muted" style="text-align:center;font-size:12px;margin-bottom:8px">Today</div>
+      <div id="thread"></div>
+      <div style="position:sticky;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);padding:8px;display:flex;gap:8px;margin-top:8px">
+        <button class="btn" id="attach">📎</button>
+        <input type="file" id="file" accept="image/*" style="display:none">
+        <input id="draft" placeholder="Write a message" style="flex:1" class="field input">
+        <button class="btn primary" id="send">➤</button>
+      </div>
+    `;
+    const thread = $('#thread', body);
+    function paint(){
+      thread.innerHTML = msgs.map(m => `
+        <div class="bubble ${m.me?'me':'you'}">
+          ${m.text ? `<div>${m.text}</div>` : (m.img ? `<img src="${m.img}" style="width:220px;height:140px;object-fit:cover;border-radius:8px">` : '')}
+          <div class="btime">${m.time}</div>
+        </div>
+      `).join('');
+    }
+    paint();
+    $('#attach', body).onclick = ()=> $('#file', body).click();
+    $('#file', body).onchange = (e)=>{ const f=e.target.files[0]; if(!f) return; const url=URL.createObjectURL(f); msgs.push({me:true,img:url,time:'now'}); paint(); e.target.value=''; };
+    $('#send', body).onclick = ()=>{ const v = $('#draft', body).value.trim(); if(!v) return; msgs.push({me:true,text:v,time:'now'}); $('#draft', body).value=''; paint(); };
+  }
+  function drawInbox(){
+    body.innerHTML = `
+      <div class="inbox-item"><div style="font-weight:600">@sparkle.clean.uk</div><div class="muted">Last message…</div><div class="muted" style="font-size:12px;margin-top:4px">10:18</div></div>
+      <div class="inbox-item"><div style="font-weight:600">@mr-fixit.uk</div><div class="muted">Quote ready…</div><div class="muted" style="font-size:12px;margin-top:4px">09:02</div></div>
+      <div class="inbox-item"><div style="font-weight:600">@doggo.walks.uk</div><div class="muted">Sure! See you at 2pm</div><div class="muted" style="font-size:12px;margin-top:4px">Yesterday</div></div>
+    `;
+  }
+  function setChat(tab){
+    $$('#chat-tabs .btn', el).forEach(b => b.classList.toggle('primary', b.dataset.chat===tab));
+    if(tab==='inbox') drawInbox(); else drawThread();
+  }
+  $('#chat-tabs').addEventListener('click', (e)=>{
+    const b=e.target.closest('[data-chat]'); if(!b) return; setChat(b.dataset.chat);
+  });
+  setChat('inbox');
+}
+
+/* ================= RENDER: PROFILE ================= */
+function renderProfile(){
+  const el = $('#tab-scroll'); el.className = 'scroll pad';
+  const u = AppState.user;
+  if(!u){
+    $('#subtitle').textContent = 'log in or sign up';
+    el.innerHTML = `
+      <div class="row" style="gap:8px">
+        <button class="btn primary" id="p-login">Log in</button>
+        <button class="btn" id="p-signup">Sign up</button>
+      </div>
+      <div class="muted" style="font-size:12px;margin-top:8px">You’ll claim your .uk handle during sign up.</div>
+    `;
+    $('#p-login').onclick = ()=> openAuth('openProfile');
+    $('#p-signup').onclick = ()=> openAuth('openProfile');
+    return;
+  }
+
+  $('#subtitle').textContent = 'your public profile';
+  el.innerHTML = `
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div class="row" style="align-items:center"><div style="font-weight:700">Publish profile</div><button class="btn" id="what-publish" style="width:24px;height:24px;padding:0;margin-left:6px">i</button></div>
+      <div class="row" style="border:1px solid var(--line);border-radius:12px;overflow:hidden">
+        <button class="btn ${AppState.publish?'primary':''}" id="pub-on">ON</button>
+        <button class="btn ${!AppState.publish?'primary':''}" id="pub-off">OFF</button>
+      </div>
+    </div>
+    <div id="publish-hint" class="muted" style="display:none;font-size:12px;margin:8px 0 4px 0">Publishing makes your profile discoverable on the map and in search.</div>
+
+    <div class="row" style="align-items:center;margin-top:12px">
+      <div class="avatar" style="width:64px;height:64px;font-size:18px">${(u.displayName||'U')[0]}</div>
+      <div class="grow">
+        <div style="font-weight:700;font-size:18px">@${u.username}.uk</div>
+        <div class="muted">${u.displayName||'Your Name'}</div>
+      </div>
+      <button class="btn primary" id="edit">Edit</button>
+    </div>
+
+    <div class="field"><div style="font-weight:700;margin-bottom:6px">About</div><div>${u.about||'Tell people about your services.'}</div></div>
+
+    <div class="field">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div style="font-weight:700">Share your profile</div>
+        <div class="row" style="gap:6px">
+          <button class="btn" id="copy">Copy link</button>
+          <button class="btn" id="qr">QR</button>
+        </div>
+      </div>
+      <div id="share-url" class="muted" style="font-size:12px;margin-top:6px;word-break:break-all"></div>
+    </div>
+
+    <div class="field">
+      <button class="btn" id="help">Help & Support</button>
+    </div>
+    <div class="field">
+      <button class="btn" id="logout" style="color:#b91c1c">Log out</button>
+    </div>
+  `;
+  $('#pub-on').onclick=()=>{ AppState.publish=true; renderProfile(); };
+  $('#pub-off').onclick=()=>{ AppState.publish=false; renderProfile(); };
+  $('#what-publish').onclick=()=>{ const h=$('#publish-hint'); h.style.display = (h.style.display==='none'?'block':'none'); };
+  $('#edit').onclick=()=> drawEditProfile();
+  $('#logout').onclick=()=>{ clearUser(); AppState.user=null; setTab('home'); };
+  // share
+  const base = location.origin + location.pathname.replace(/\/[^/]*$/,'/');
+  const url = base + '?pro=' + encodeURIComponent(u.username);
+  $('#share-url').textContent = url;
+  $('#copy').onclick=()=> copy(url);
+  $('#qr').onclick=()=>{
+    const m = window.open('', '_blank', 'width=240,height=260'); if(!m) return;
+    m.document.write('<title>QR</title><body style="margin:0;display:grid;place-items:center;height:100vh;background:#f8fafc;font-family:system-ui"><div class="qr" style="width:180px;height:180px;border:1px solid #e2e8f0;border-radius:12px;display:grid;place-items:center;background:#fff"><div style="font:12px system-ui">QR</div></div><div style="font:12px system-ui;margin-top:6px">Scan to open</div></body>');
+  };
+}
+
+function drawEditProfile(){
+  const el = $('#tab-scroll'); el.className = 'scroll pad';
+  const u = AppState.user || { username:"demo.user", displayName:"Your Name", headline:"", about:"" };
+  $('#subtitle').textContent = 'edit your profile';
+  el.innerHTML = `
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <button class="btn" id="back">← Back</button>
+      <span></span>
+    </div>
+    <div class="field"><div>Handle (username)</div>
+      <div class="row" style="align-items:center">
+        <span class="btn" style="border-top-right-radius:0;border-bottom-right-radius:0;pointer-events:none">@</span>
+        <input id="e-username" value="${u.username}" style="flex:1;border-radius:0">
+        <span class="btn" style="border-top-left-radius:0;border-bottom-left-radius:0;pointer-events:none">.uk</span>
+      </div>
+    </div>
+    <div class="field"><div>Display name</div><input id="e-display" value="${u.displayName||''}" placeholder="Sparkle Clean"></div>
+    <div class="field"><div>Headline</div><input id="e-headline" value="${u.headline||''}" placeholder="End‑of‑tenancy specialist"></div>
+    <div class="field"><div>About</div><textarea id="e-about" rows="4" placeholder="Professional home & Airbnb cleaners.">${u.about||''}</textarea></div>
+    <div class="row"><button class="btn primary" id="save">Save</button><button class="btn" id="cancel">Cancel</button></div>
+
+    <div style="margin-top:16px;font-weight:700">Categories</div>
+    <div id="cat-editor"></div>
+
+    <div style="margin-top:16px;font-weight:700">Pin your map location</div>
+    <div style="height:160px;border:1px solid var(--line);border-radius:12px;background:#e6f0ff"></div>
+  `;
+  $('#back').onclick=()=> renderProfile();
+  $('#cancel').onclick=()=> renderProfile();
+  $('#save').onclick=()=>{
+    const updated = { email:u.email, username:$('#e-username').value||u.username, displayName:$('#e-display').value||u.displayName, headline:$('#e-headline').value||u.headline, about:$('#e-about').value||u.about };
+    AppState.user = updated; saveUser(updated); toast('Saved'); renderProfile();
+  };
+  // categories chooser with search + expand + multi-select tags
+  const cont = $('#cat-editor');
+  cont.innerHTML = `
+    <div class="search"><span>🔎</span><input id="ed-q" placeholder="Search categories or subcategories"></div>
+    <div id="ed-list"></div>
+  `;
+  const selected = new Map(); // cat -> Set(subs)
+  function draw(q=''){
+    $('#ed-list').innerHTML = CATEGORIES.filter(cat =>
+      !q || cat.name.toLowerCase().includes(q) || (cat.subs||[]).some(s=>s.toLowerCase().includes(q))
+    ).map((cat,i)=>`
+      <div class="list" style="border:1px solid var(--line);background:#fff;border-radius:16px;margin-bottom:12px;overflow:hidden">
+        <div class="row" style="justify-content:space-between;align-items:center;padding:12px">
+          <button class="btn" data-open="${i}" style="background:none;border:none;font-weight:600;cursor:pointer">${cat.name}</button>
+          <button class="btn" data-toggle="${i}" style="width:32px;text-align:center">+</button>
+        </div>
+        <div class="subs" data-pane="${i}" style="display:none;padding:0 12px 12px 12px">
+          ${(cat.subs||[]).filter(s=>!q || s.toLowerCase().includes(q)).map(s=>{
+            const active = selected.get(cat.name)?.has(s);
+            return `<button class="chip ${active?'primary':''}" data-pick="${cat.name}::${s}">${s}</button>`;
+          }).join('')}
+        </div>
+      </div>
+    `).join('');
+    $$('[data-toggle]').forEach(btn => btn.addEventListener('click', ()=>{
+      const pane = $(`[data-pane="${btn.dataset.toggle}"]`); pane.style.display = pane.style.display==='none' ? 'block' : 'none';
+      btn.textContent = pane.style.display==='none' ? '+' : '–';
+    }));
+    $$('[data-open]').forEach(btn => btn.addEventListener('click', ()=>{
+      const pane = $(`[data-pane="${btn.dataset.open}"]`); pane.style.display = pane.style.display==='none' ? 'block' : 'none';
+      const tgl = $(`[data-toggle="${btn.dataset.open}"]`); tgl.textContent = pane.style.display==='none' ? '+' : '–';
+    }));
+    $$('[data-pick]').forEach(b => b.addEventListener('click', ()=>{
+      const [cat, sub] = b.dataset.pick.split('::');
+      const set = selected.get(cat) || new Set(); set.has(sub) ? set.delete(sub) : set.add(sub); selected.set(cat, set); draw(q);
+    }));
+  }
+  draw();
+  $('#ed-q').addEventListener('input', (e)=> draw(e.target.value.trim().toLowerCase()));
+}
+
+/* ================= NAV SETUP ================= */
+$('#nav').addEventListener('click', (e)=>{
+  const b = e.target.closest('button[data-tab]'); if(!b) return;
+  const target = b.dataset.tab;
+  if(target==='profile' && !AppState.user){ openAuth('openProfile'); return; }
+  setTab(target);
+});
+
+/* ================= INIT / DEEP LINKS ================= */
+(function init(){
+  const tab = (location.hash.replace('#','')||'home').toLowerCase();
+  if(['home','categories','chat','profile'].includes(tab)){
+    if(tab==='profile' && !AppState.user){ openAuth('openProfile'); }
+    else setTab(tab);
+  } else setTab('home');
+
+  // deep link to provider (?pro=handle)
+  const params = new URLSearchParams(location.search);
+  const pro = params.get('pro');
+  if(pro){
+    const p = PROS.find(x=>x.handle===pro || x.handle===pro.replace(/\.uk$/,''));
+    if(p){ setTimeout(()=>openProfile(p.handle), 200); }
+  }
+})();
+</script>
+</body>
+</html>
