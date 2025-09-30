@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>idensal Canvas Demo — Offline</title>
+<style>
+  :root { --bg:#f8fafc; --fg:#0f172a; --muted:#64748b; --card:#ffffff; --line:#e2e8f0; --accent:#111827; }
+  *{box-sizing:border-box} html,body{height:100%} body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial}
+  .app{max-width:420px;margin:16px auto;border:1px solid var(--line);border-radius:24px;background:#fff;box-shadow:0 10px 30px rgba(2,6,23,.06);overflow:hidden}
+  .phone{height:780px;display:flex;flex-direction:column}
+  .bar{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.96);backdrop-filter:saturate(1.2) blur(4px)}
+  .bar .title{font-weight:700;letter-spacing:.2px}
+  .search{margin:8px 16px;display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:16px;padding:8px 12px;background:#fff;box-shadow:0 4px 10px rgba(2,6,23,.03)}
+  .search input{border:0;outline:0;width:100%;font-size:14px;color:#111827}
+  .chips{display:flex;gap:8px;overflow:auto;padding:0 16px 8px 16px}
+  .chip{flex:none;border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 10px;font-size:13px}
+  .map{position:relative;inset:0;background:#e6f0ff;height:100%}
+  .map svg{position:absolute;inset:0;width:100%;height:100%}
+  .pin{position:absolute;transform:translate(-50%,-100%);cursor:pointer}
+  .pin .label{font-size:12px;color:#f59e0b;text-shadow:0 1px 1px rgba(0,0,0,.15);margin-bottom:-4px;font-weight:600;white-space:nowrap}
+  .pin-dot{width:18px;height:18px;background:#facc15;border:2px solid #fff;border-radius:6px;box-shadow:0 3px 8px rgba(2,6,23,.25)}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);backdrop-filter:blur(4px);border-top:1px solid var(--line);border-radius:16px 16px 0 0;box-shadow:0 -10px 30px rgba(2,6,23,.1);padding:12px;max-height:60%;overflow:auto}
+  .handle{width:40px;height:6px;border-radius:999px;background:#d1d5db;margin:0 auto 8px auto}
+  .card{border:1px solid var(--line);background:#fff;border-radius:16px;padding:12px;margin-bottom:12px;box-shadow:0 2px 8px rgba(2,6,23,.04);cursor:pointer;display:flex;gap:12px;align-items:flex-start}
+  .avatar{width:48px;height:48px;border-radius:999px;background:#e5e7eb;display:grid;place-items:center;font-weight:600;color:#334155;flex:none}
+  .grow{flex:1;min-width:0}
+  .muted{color:var(--muted)}
+  .btn{border:1px solid var(--line);border-radius:12px;background:#fff;padding:8px 10px;font-size:12px;cursor:pointer}
+  .btn.primary{background:var(--accent);color:#fff;border-color:#000}
+  .content{position:relative;flex:1;overflow:hidden}
+  .scroll{position:absolute;inset:56px 0 56px 0;overflow:auto;background:#f8fafc}
+  .scroll.pad{padding:12px 16px}
+  .nav{display:grid;grid-template-columns:repeat(4,1fr);height:56px;border-top:1px solid var(--line);background:#fff}
+  .nav button{background:none;border:0;font-size:12px;color:#64748b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+  .nav button.active{color:#111827;font-weight:700}
+  .h14{height:56px}
+  .modal{position:absolute;inset:0;background:rgba(0,0,0,.4);display:none}
+  .modal.open{display:block}
+  .sheet2{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);border-radius:20px 20px 0 0;max-height:88%;overflow:auto;box-shadow:0 -10px 30px rgba(2,6,23,.2)}
+  .sheet2 .hdr{position:sticky;top:0;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.96)}
+  .field{margin:8px 0}
+  .field input,.field textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:14px}
+  .row{display:flex;gap:8px}
+  .tag{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:12px;margin:0 6px 6px 0}
+  .list{display:block}
+  .inbox-item{border:1px solid var(--line);background:#fff;border-radius:16px;padding:12px;margin-bottom:8px}
+  .bubble{max-width:78%;border-radius:12px;padding:8px 10px;box-shadow:0 2px 6px rgba(2,6,23,.1);font-size:13px;margin:6px 0}
+  .bubble.me{background:#111827;color:#fff;border-bottom-right-radius:4px;margin-left:auto}
+  .bubble.you{background:#f1f5f9;color:#0f172a;border-bottom-left-radius:4px;margin-right:auto}
+  .btime{font-size:10px;opacity:.65;margin-top:4px}
+  .no-scrollbar::-webkit-scrollbar{display:none}
+  .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="phone">
+    <div class="content">
+      <!-- TOP BAR + PER-TAB CONTENT WRAPPER -->
+      <div class="bar">
+        <div class="title">idensal</div>
+        <div class="muted" id="subtitle">your neighborhood</div>
+      </div>
+      <div class="scroll" id="tab-scroll"></div>
+      <div class="nav" id="nav">
+        <button data-tab="home" class="active"><div>🏠</div><div>Home</div></button>
+        <button data-tab="categories"><div>🗂️</div><div>Categories</div></button>
+        <button data-tab="chat"><div>💬</div><div>Chat</div></button>
+        <button data-tab="profile"><div>👤</div><div>Profile</div></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE MODAL -->
+<div class="modal" id="profile-modal" aria-hidden="true">
+  <div class="sheet2" role="dialog" aria-label="Profile">
+    <div class="hdr">
+      <button class="btn" id="pm-close">✕</button>
+      <div class="muted">Profile</div>
+      <span style="width:28px"></span>
+    </div>
+    <div id="pm-body" class="scroll pad" style="position:relative;inset:auto;max-height:calc(88vh - 56px);"></div>
+  </div>
+</div>
+
+<script>
+// ---------- DATA ----------
+const CATEGORIES = [
+  { name:"Cleaning", subs:["Carpet & upholstery","Household cleaning","End of tenancy clean","After builders clean","Gutter/soffit clean","Jet-wash patios/drives","Other"] },
+  { name:"Heating & Gas", subs:["Boiler service","CP12 (landlord)","Boiler repair callout","TRVs & balancing","System power flush","Smart thermostat fit","Other"] },
+  { name:"Plumbing", subs:["Emergency leaks","Toilet repair/replace","Shower valve swap","Tap swap (kitchen/bath)","Leak trace & repair","Outdoor tap install","Other"] },
+  { name:"Electrical & Smart", subs:["EICR (inspection)","Consumer unit upgrade","Electric shower fit","Oven/hob connection","Security/PIR lighting","EV charger install","Other"] },
+  { name:"Roofing & Gutters", subs:["Gutter clear/repair","Moss remove & treat","Soffit/fascia repair","Velux/skylight reseal","Roof leak repair","Tile/slate replace","Other"] },
+  { name:"Windows & Doors", subs:["Misted unit replace","Composite door fit","Reseal & draught-proof","Lock/hinge/handle fix","Align/adjust doors","Conservatory repairs","Other"] },
+  { name:"Joinery & Finishes", subs:["Plaster/skimming","Tiling (kitchen/bath)","Doors/skirting/arches","Stud wall/partition","Laminate/LVT flooring","Painting & decorating","Other"] },
+  { name:"Handyman", subs:["Draught-proof doors","Silicone/grout refresh","Patch & paint touch-ups","Door plane/hinge/latch","Blinds/curtain tracks","TV mount & shelving","Other"] },
+  { name:"Gardens & Driveways", subs:["Hedge cut/reduce","Jet-wash drive/patio","Fence/post repair","Garden clear-out","Decking build/repair","Driveway repairs","Other"] },
+  { name:"Removals & Waste", subs:["Man & van (hourly)","Student/flat moves","Furniture dis/re-assemble","Bulky waste / HIPPO","House/loft/garage clear","Other"] },
+  { name:"Care (Children & Elderly)", subs:["Babysitting","Holiday/backup cover","SEN-aware support","Elderly companionship","Personal care visits","Other"] },
+  { name:"Events", subs:["Food & Drink","Food trucks","Markets","Experiences","Other"] },
+  { name:"Others", subs:["Others"] },
+];
+const PROS = [
+  { handle:"sparkle.clean", displayName:"Sparkle Clean", title:"End-of-tenancy specialist", distance:"0.4 mi", short:"Deep clean • Windows", cat:"Cleaning", coords:{x:32,y:52}, about:"Professional home & Airbnb cleaners covering deep cleans and end‑of‑tenancy." },
+  { handle:"deepgloss.clean", displayName:"Deep Gloss", title:"Deep Clean Team", distance:"0.6 mi", short:"Deep clean • Carpets", cat:"Cleaning", coords:{x:45,y:40}, about:"Steam & eco products." },
+  { handle:"mr-fixit", displayName:"Mr Fixit", title:"Emergency plumber 24/7", distance:"0.7 mi", short:"Leaks • Drains", cat:"Plumbing", coords:{x:42,y:68}, about:"Gas Safe partner network." },
+];
+const TAKEN = ["sparkleclean","idensal","admin","support","test"];
+
+// ---------- STORAGE ----------
+const LS_USER = "idensal.user";
+const loadUser = () => { try { return JSON.parse(localStorage.getItem(LS_USER)||"null"); } catch(e){ return null; } };
+const saveUser = (u) => { try { localStorage.setItem(LS_USER, JSON.stringify(u)); } catch(e){} };
+const clearUser = () => { try { localStorage.removeItem(LS_USER); } catch(e){} };
+
+// ---------- UTIL ----------
+const $ = (sel, el=document) => el.querySelector(sel);
+const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+function setHash(tab){ const h = "#"+tab; if(location.hash!==h){ history.replaceState(null,"",h+location.search); } }
+function sortByDistance(list){ return list.slice().sort((a,b)=> (parseFloat(a.distance)||0)-(parseFloat(b.distance)||0)); }
+
+// ---------- RENDERERS ----------
+function renderHome(state){
+  $('#subtitle').textContent = 'your neighborhood';
+  const el = $('#tab-scroll'); el.className = 'scroll'; el.innerHTML = `
+    <div class="map" id="map">
+      <svg xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="100%" height="100%" fill="#e6f0ff"/>
+        <g stroke="#c5d6f5" stroke-width="2" fill="none" opacity="0.9">
+          <path d="M0,40 C120,60 200,20 420,60" />
+          <path d="M0,200 C160,180 260,220 420,200" />
+          <path d="M60,0 C80,120 140,160 160,300" />
+          <path d="M300,0 C280,100 260,220 240,320" />
+        </g>
+      </svg>
+      ${sortByDistance(state.filteredPros).map(p => `
+        <div class="pin" style="left:${(p.coords?.x||50)}%; top:${(p.coords?.y||50)}%">
+          <div class="label">@${p.handle}.uk</div>
+          <div class="pin-dot" data-handle="${p.handle}" title="${p.displayName}"></div>
+        </div>
+      `).join('')}
+      <div class="sheet" id="results-sheet">
+        <div class="handle"></div>
+        ${sortByDistance(state.filteredPros).map(p => `
+          <div class="card" data-handle="${p.handle}">
+            <div class="avatar">${(p.displayName||'U').slice(0,1)}</div>
+            <div class="grow">
+              <div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@${p.handle}.uk</div>
+              <div class="muted" style="margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.title}</div>
+              <div style="margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.short||''}</div>
+            </div>
+            <div style="text-align:right;flex:none">
+              <div class="muted" style="font-size:12px">${p.distance}</div>
+              <button class="btn" data-nav="${p.handle}">🧭 Navigate</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+
+  // open modal on pin/click
+  $$('.pin-dot', el).forEach(dot => dot.addEventListener('click', () => openProfile(dot.dataset.handle)));
+  $$('.card', el).forEach(c => c.addEventListener('click', () => openProfile(c.dataset.handle)));
+  $$('.btn[data-nav]', el).forEach(b => b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const h = b.dataset.nav; const p = PROS.find(x=>x.handle===h);
+    const label = p?.displayName || ('@'+h+'.uk');
+    window.open('https://maps.google.com/?q='+encodeURIComponent(label),'_blank');
+  }));
+}
+
+function renderCategories(state){
+  $('#subtitle').textContent = 'browse categories';
+  const el = $('#tab-scroll'); el.className = 'scroll pad'; el.innerHTML = `
+    <div class="search"><span>🔎</span><input id="cat-q" placeholder="Search categories & subs"></div>
+    <div id="cat-list"></div>
+  `;
+  const cont = $('#cat-list');
+  function draw(q=''){
+    cont.innerHTML = CATEGORIES.filter(cat =>
+      !q || cat.name.toLowerCase().includes(q) || (cat.subs||[]).some(s=>s.toLowerCase().includes(q))
+    ).map((cat,i)=>`
+      <div class="list" style="border:1px solid var(--line);background:#fff;border-radius:16px;margin-bottom:12px;overflow:hidden">
+        <div class="row" style="justify-content:space-between;align-items:center;padding:12px;cursor:pointer" data-open="${i}">
+          <div style="font-weight:600">${cat.name}</div>
+          <div class="btn" style="width:32px;text-align:center">+</div>
+        </div>
+        <div class="subs" data-pane="${i}" style="display:none;padding:0 12px 12px 12px">
+          ${(cat.subs||[]).filter(s=>!q || s.toLowerCase().includes(q)).map(s=>`<button class="chip" data-pick="${cat.name}">${s}</button>`).join('')}
+        </div>
+      </div>
+    `).join('');
+    $$('[data-open]').forEach(btn => btn.addEventListener('click', ()=>{
+      const pane = $(`[data-pane="${btn.dataset.open}"]`, cont); pane.style.display = pane.style.display==='none' ? 'block' : 'none';
+      btn.querySelector('.btn').textContent = pane.style.display==='none' ? '+' : '–';
+    }));
+    $$('[data-pick]').forEach(b => b.addEventListener('click', ()=>{
+      state.selectedCat = b.dataset.pick; state.filteredPros = PROS.filter(p=>p.cat===state.selectedCat);
+      setTab('home'); // go back to home with filter
+    }));
+  }
+  draw();
+  $('#cat-q').addEventListener('input', (e)=> draw(e.target.value.trim().toLowerCase()));
+}
+
+function renderChat(){
+  $('#subtitle').textContent = 'in-app notifications';
+  const el = $('#tab-scroll'); el.className = 'scroll pad';
+  el.innerHTML = `
+    <div class="muted" style="text-align:center;font-size:12px;margin-bottom:8px">Today</div>
+    <div id="thread"></div>
+    <div class="h14"></div>
+    <div style="position:sticky;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);padding:8px;display:flex;gap:8px">
+      <button class="btn" id="attach">📎</button>
+      <input type="file" id="file" accept="image/*" style="display:none">
+      <input id="draft" placeholder="Write a message" style="flex:1" class="field input">
+      <button class="btn primary" id="send">➤</button>
+    </div>
+  `;
+  const thread = $('#thread', el);
+  const msgs = [
+    {me:false, text:'Hi! I found you on idensal.', time:'10:14'},
+    {me:true, text:'Thanks! What date suits?', time:'10:15'},
+  ];
+  function draw(){
+    thread.innerHTML = msgs.map(m => `
+      <div class="bubble ${m.me?'me':'you'}">
+        ${m.text ? `<div>${m.text}</div>` : (m.img ? `<img src="${m.img}" style="width:220px;height:140px;object-fit:cover;border-radius:8px">` : '')}
+        <div class="btime">${m.time}</div>
+      </div>
+    `).join('');
+  }
+  draw();
+  $('#attach', el).addEventListener('click', ()=> $('#file', el).click());
+  $('#file', el).addEventListener('change', (e)=>{
+    const f = e.target.files[0]; if(!f) return;
+    const url = URL.createObjectURL(f);
+    msgs.push({me:true, img:url, time:'now'}); draw();
+    e.target.value='';
+  });
+  $('#send', el).addEventListener('click', ()=>{
+    const v = $('#draft', el).value.trim(); if(!v) return;
+    msgs.push({me:true, text:v, time:'now'}); $('#draft', el).value=''; draw();
+  });
+}
+
+function renderProfile(state){
+  const el = $('#tab-scroll'); el.className = 'scroll pad';
+  // steps: auth -> claim -> edit
+  let step = state.user ? 'edit' : 'auth';
+  let mode = 'login'; // or signup
+  const form = Object.assign({email:'', password:'', username:'', displayName:'', headline:'', about:''}, state.user||{});
+
+  function draw(){
+    $('#subtitle').textContent = step==='auth' ? 'log in or sign up' : (step==='claim' ? 'claim your handle' : 'edit your profile');
+    if(step==='auth'){
+      el.innerHTML = `
+        <div class="row" style="gap:8px">
+          <button class="btn ${mode==='login'?'primary':''}" id="tab-login">Log in</button>
+          <button class="btn ${mode==='signup'?'primary':''}" id="tab-signup">Sign up</button>
+        </div>
+        <div class="field"><div>Email</div><input id="f-email" placeholder="you@email.com" value="${form.email||''}"></div>
+        <div class="field"><div>Password</div><input id="f-pass" type="password" placeholder="••••••••" value="${form.password||''}"></div>
+        <div class="row"><button class="btn" disabled> Apple</button><button class="btn" disabled>🔵 Google</button></div>
+        <button class="btn primary" id="continue" ${(!form.email||!form.password)?'disabled':''}>${mode==='login'?'Continue':'Create account'}</button>
+      `;
+      $('#tab-login', el).onclick = ()=>{ mode='login'; draw(); };
+      $('#tab-signup', el).onclick = ()=>{ mode='signup'; draw(); };
+      $('#f-email', el).oninput = (e)=>{ form.email = e.target.value; draw(); };
+      $('#f-pass', el).oninput = (e)=>{ form.password = e.target.value; draw(); };
+      $('#continue', el).onclick = ()=>{ step = (mode==='signup') ? 'claim' : 'edit'; if(mode==='login' && !form.username) form.username='demo.user'; if(!form.displayName) form.displayName='Your Name'; draw(); };
+      return;
+    }
+    if(step==='claim'){
+      const valid = /^[a-z0-9_.]{3,20}$/i.test(form.username||'');
+      const taken = (form.username||'').trim() && TAKEN.includes((form.username||'').toLowerCase());
+      el.innerHTML = `
+        <div style="font-weight:700;margin-bottom:6px">Claim your public handle</div>
+        <div class="muted" style="font-size:12px;margin-bottom:8px">Use letters, numbers, _ or . (3–20 chars). Example: <span style="font-family:ui-monospace,monospace">keith.sutherland</span>.uk</div>
+        <div class="row" style="align-items:center">
+          <span class="btn" style="border-top-right-radius:0;border-bottom-right-radius:0;pointer-events:none">@</span>
+          <input id="f-username" value="${form.username||''}" class="field" style="flex:1;border-radius:0" placeholder="sparkle.clean">
+          <span class="btn" style="border-top-left-radius:0;border-bottom-left-radius:0;pointer-events:none">.uk</span>
+        </div>
+        ${ form.username ? (!valid ? `<div class="muted" style="color:#b91c1c">Username must be 3–20 characters (letters, numbers, _ or .)</div>`
+                                   : (taken ? `<div class="muted" style="color:#b91c1c">That username is taken. Try another.</div>`
+                                            : `<div class="muted" style="color:#166534">✅ Available</div>`)) : ''}
+        <button class="btn primary" id="finish" ${(valid && !taken)?'':'disabled'}>Finish</button>
+      `;
+      $('#f-username', el).oninput = (e)=>{ form.username = e.target.value; draw(); };
+      $('#finish', el).onclick = ()=>{ step='edit'; if(!form.displayName) form.displayName='Your Name'; draw(); };
+      return;
+    }
+    // edit
+    el.innerHTML = `
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div style="font-weight:700">Your profile</div>
+        <button class="btn" id="logout" style="color:#b91c1c">Log out</button>
+      </div>
+      <div class="field"><div>Public handle</div>
+        <div class="row" style="align-items:center">
+          <span class="btn" style="border-top-right-radius:0;border-bottom-right-radius:0;pointer-events:none">@</span>
+          <input id="f-username" value="${form.username||''}" style="flex:1;border-radius:0">
+          <span class="btn" style="border-top-left-radius:0;border-bottom-left-radius:0;pointer-events:none">.uk</span>
+        </div>
+      </div>
+      <div class="field"><div>Display name</div><input id="f-display" value="${form.displayName||''}" placeholder="Sparkle Clean"></div>
+      <div class="field"><div>Headline</div><input id="f-headline" value="${form.headline||''}" placeholder="End‑of‑tenancy specialist"></div>
+      <div class="field"><div>About</div><textarea id="f-about" rows="4" placeholder="Professional home & Airbnb cleaners.">${form.about||''}</textarea></div>
+      <div class="row">
+        <button class="btn primary" id="save">Save</button>
+        <button class="btn" id="preview">Preview public profile</button>
+      </div>
+      <div class="muted" style="font-size:12px">Saved locally (browser storage) for demo purposes.</div>
+    `;
+    $('#logout', el).onclick = ()=>{ clearUser(); state.user=null; step='auth'; mode='login'; Object.keys(form).forEach(k=>form[k]=''); draw(); };
+    $('#f-username', el).oninput = (e)=> form.username = e.target.value;
+    $('#f-display', el).oninput = (e)=> form.displayName = e.target.value;
+    $('#f-headline', el).oninput = (e)=> form.headline = e.target.value;
+    $('#f-about', el).oninput = (e)=> form.about = e.target.value;
+    $('#save', el).onclick = ()=>{ state.user = { email:form.email||'', username:form.username||'demo.user', displayName:form.displayName||'Your Name', headline:form.headline||'', about:form.about||'' }; saveUser(state.user); alert('Saved'); };
+    $('#preview', el).onclick = ()=>{
+      const p = {
+        handle: form.username || 'demo.user',
+        displayName: form.displayName || 'Your Name',
+        title: form.headline || '',
+        distance: '—', short: '—', cat: 'Others', coords:{x:50,y:50},
+        about: form.about || 'Tell people about your services.'
+      };
+      openProfile(null, p);
+    };
+  }
+  draw();
+}
+
+// ---------- PROFILE MODAL ----------
+function openProfile(handle, payload){
+  const data = payload || PROS.find(x=>x.handle===handle);
+  if(!data) return;
+  const body = $('#pm-body');
+  body.innerHTML = `
+    <div class="row" style="align-items:center;gap:12px">
+      <div class="avatar" style="width:64px;height:64px;font-size:16px">${(data.displayName||'U').slice(0,1)}</div>
+      <div class="grow">
+        <div class="muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@${data.handle}.uk</div>
+        <div style="font-weight:700;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${data.displayName}</div>
+        <div class="muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${data.title||''}</div>
+        <div class="muted" style="font-size:12px;margin-top:4px">Distance: ${data.distance||'—'} • Category: ${data.cat||'—'}</div>
+      </div>
+      <button class="btn" id="navto">🧭 Navigate</button>
+    </div>
+    <div class="field"><div style="font-weight:700;margin-bottom:6px">About</div><div>${data.about||'—'}</div></div>
+    <div class="field"><div style="font-weight:700;margin-bottom:6px">Photos</div>
+      <div class="row" style="flex-wrap:wrap">
+        ${[1,2,3,4,5,6].map(i=>`<div style="width:32%;height:80px;background:#e5e7eb;border-radius:12px;margin-bottom:8px"></div>`).join('')}
+      </div>
+    </div>
+    <div class="field"><div style="font-weight:700;margin-bottom:6px">Categories</div>
+      <span class="tag">${data.cat||'Others'}</span>
+    </div>
+  `;
+  $('#navto').onclick = ()=>{
+    const label = data.displayName || ('@'+data.handle+'.uk');
+    window.open('https://maps.google.com/?q='+encodeURIComponent(label),'_blank');
+  };
+  $('#profile-modal').classList.add('open');
+}
+$('#pm-close').addEventListener('click', ()=> $('#profile-modal').classList.remove('open'));
+$('#profile-modal').addEventListener('click', (e)=>{ if(e.target.id==='profile-modal') $('#profile-modal').classList.remove('open'); });
+
+// ---------- TABS / STATE ----------
+const state = {
+  tab: 'home',
+  selectedCat: '',
+  filteredPros: PROS.slice(),
+  user: loadUser()
+};
+function setTab(tab){
+  state.tab = tab;
+  $$('#nav button').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
+  setHash(tab);
+  if(tab==='home') renderHome(state);
+  else if(tab==='categories') renderCategories(state);
+  else if(tab==='chat') renderChat();
+  else if(tab==='profile') renderProfile(state);
+}
+$('#nav').addEventListener('click', (e)=>{
+  const b = e.target.closest('button[data-tab]'); if(!b) return;
+  setTab(b.dataset.tab);
+});
+
+// ---------- INIT / DEEP LINKS ----------
+(function init(){
+  // deep link tab
+  const tab = (location.hash.replace('#','')||'home').toLowerCase();
+  if(['home','categories','chat','profile'].includes(tab)) setTab(tab); else setTab('home');
+  // deep link provider (?pro=handle)
+  const params = new URLSearchParams(location.search);
+  const pro = params.get('pro');
+  if(pro){
+    const p = PROS.find(x=>x.handle===pro);
+    if(p){ setTimeout(()=>openProfile(p.handle), 300); }
+  }
+})();
+</script>
+</body>
+</html>
