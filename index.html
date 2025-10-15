@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>idensal — Demo</title>
+  <meta name="description" content="idensal demo single-file app">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .fade-enter { opacity: 0; transform: translateY(6px); }
+    .fade-enter-active { opacity: 1; transform: translateY(0); transition: all .18s ease; }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <div id="app"></div>
+
+  <template id="tpl-shell">
+    <div class="min-h-screen p-4">
+      <div class="mx-auto max-w-[420px] rounded-3xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+        <div class="flex h-[780px] flex-col">
+          <div id="view" class="flex-1 overflow-hidden relative"></div>
+          <nav class="grid grid-cols-4 border-t bg-white">
+            <button data-tab="Home" class="tab h-14 text-xs flex flex-col items-center justify-center gap-0.5">
+              <span class="text-lg">🏠</span><span>Home</span>
+            </button>
+            <button data-tab="Jobs" class="tab h-14 text-xs flex flex-col items-center justify-center gap-0.5">
+              <span class="text-lg">📋</span><span>Jobs</span>
+            </button>
+            <button data-tab="Chat" class="tab h-14 text-xs flex flex-col items-center justify-center gap-0.5">
+              <span class="text-lg">💬</span><span>Chat</span>
+            </button>
+            <button data-tab="Profile" class="tab h-14 text-xs flex flex-col items-center justify-center gap-0.5">
+              <span class="text-lg">👤</span><span>Profile</span>
+            </button>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-login">
+    <div class="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+      <div class="w-[92%] max-w-[420px] rounded-3xl bg-white border shadow-xl overflow-hidden">
+        <div class="h-16 px-5 border-b flex items-center justify-between">
+          <div class="text-lg font-semibold tracking-tight">idensal</div>
+          <div class="text-xs text-gray-500">Login</div>
+        </div>
+        <div class="p-5 space-y-4">
+          <label class="block text-sm">Email
+            <input id="login-email" class="mt-1 w-full rounded-xl border px-3 py-2" placeholder="you@email.com">
+          </label>
+          <label class="block text-sm">Password
+            <div class="mt-1 flex rounded-xl border overflow-hidden">
+              <input id="login-pw" type="password" class="flex-1 px-3 py-2 outline-none" placeholder="••••••••">
+              <button id="login-toggle" class="px-3 text-sm text-gray-600 border-l" type="button">Show</button>
+            </div>
+          </label>
+          <div class="flex items-center justify-between text-sm">
+            <button id="login-forgot" class="text-blue-600" type="button">Forgot password?</button>
+            <span class="text-gray-400">or</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button class="rounded-xl border px-3 py-2">Apple</button>
+            <button class="rounded-xl border px-3 py-2">Google</button>
+          </div>
+          <button id="login-continue" class="w-full rounded-xl px-4 py-2 bg-black text-white">Continue</button>
+          <div class="text-sm text-gray-600 text-center">
+            No account?
+            <button id="login-signup" class="text-blue-600 hover:underline" type="button">Sign up</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-signup">
+    <div class="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+      <div class="w-[92%] max-w-[420px] rounded-3xl bg-white border shadow-xl overflow-hidden">
+        <div class="h-16 px-5 border-b flex items-center justify-between">
+          <button id="signup-back" class="text-gray-600">←</button>
+          <div class="text-xs text-gray-500">Sign up</div>
+          <span class="w-4"></span>
+        </div>
+        <div class="p-5 space-y-4">
+          <label class="block text-sm">Email
+            <input id="signup-email" class="mt-1 w-full rounded-xl border px-3 py-2" placeholder="you@email.com">
+          </label>
+          <label class="block text-sm">Password
+            <input id="signup-pw" type="password" class="mt-1 w-full rounded-xl border px-3 py-2" placeholder="••••••••">
+          </label>
+          <label class="block text-sm">Choose a username
+            <div class="relative">
+              <input id="signup-username" class="mt-1 w-full rounded-xl border px-3 py-2 pr-10" placeholder="keith.sutherland">
+              <span class="absolute right-2 top-1/2 -translate-y-1/2 text-sm bg-gray-100 text-gray-700 rounded-md px-2 py-0.5">.uk</span>
+            </div>
+          </label>
+          <button id="signup-finish" class="w-full rounded-xl px-4 py-2 bg-black text-white">Create account</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-forgot">
+    <div class="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+      <div class="w-[92%] max-w-[420px] rounded-3xl bg-white border shadow-xl overflow-hidden">
+        <div class="h-16 px-5 border-b flex items-center justify-between">
+          <button id="forgot-back" class="text-gray-600">←</button>
+          <div class="text-xs text-gray-500">Reset password</div>
+          <span class="w-4"></span>
+        </div>
+        <div class="p-5 space-y-4">
+          <p class="text-sm text-gray-700">Enter your email to receive a reset link.</p>
+          <input id="forgot-email" class="w-full rounded-xl border px-3 py-2" placeholder="you@email.com">
+          <button id="forgot-send" class="w-full rounded-xl px-4 py-2 bg-black text-white">Send reset link</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-home">
+    <div class="relative h-full">
+      <div class="absolute inset-0 bg-blue-50">
+        <svg class="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+          <rect x="0" y="0" width="100%" height="100%" fill="#e6f0ff" />
+          <g stroke="#c5d6f5" stroke-width="2" fill="none" opacity="0.9">
+            <path d="M0,40 C120,60 200,20 420,60" />
+            <path d="M0,200 C160,180 260,220 420,200" />
+            <path d="M60,0 C80,120 140,160 160,300" />
+            <path d="M300,0 C280,100 260,220 240,320" />
+          </g>
+          <g stroke="#d8e5fb" stroke-width="1" fill="none">
+            <path d="M0,120 L420,120" />
+            <path d="M0,260 L420,260" />
+            <path d="M120,0 L120,360" />
+            <path d="M360,0 L360,360" />
+          </g>
+          <rect x="260" y="140" width="120" height="80" fill="#d0ecff" stroke="#b6daf5" />
+        </svg>
+        <div class="absolute inset-0 flex items-center justify-center text-gray-600 pointer-events-none select-none">
+          <div class="text-center">
+            <div>📍</div>
+            <div class="text-sm">Centered near your area</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="absolute left-0 right-0" style="top:0">
+        <div class="h-14 border-b bg-white/95 backdrop-blur flex items-center justify-between px-4">
+          <div class="text-base font-semibold tracking-tight">idensal</div>
+          <div class="text-xs text-gray-600 whitespace-nowrap">people by area</div>
+        </div>
+        <div class="mx-4 mt-2 flex items-center gap-2 bg-white/95 backdrop-blur border rounded-2xl px-3 py-2 shadow">
+          <span class="text-gray-400">🔎</span>
+          <input class="flex-1 outline-none text-sm text-gray-700 placeholder-gray-400" placeholder="key words (e.g., cleaner, boiler engineer)">
+        </div>
+      </div>
+
+      <div id="home-list" class="absolute left-0 right-0 bottom-0 z-10">
+        <div class="overflow-auto no-scrollbar rounded-t-2xl bg-white/95 backdrop-blur border-t p-3 shadow-xl" style="height:60%">
+          <div class="flex justify-center">
+            <div class="h-1.5 w-10 bg-gray-300 rounded-full mb-2"></div>
+          </div>
+          <!-- cards injected -->
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-card">
+    <div class="p-3 border rounded-2xl mb-3 bg-white shadow-sm cursor-pointer relative">
+      <div class="text-xs font-semibold text-gray-900 truncate pr-14"></div>
+      <div class="mt-1 flex items-center gap-3 pr-14">
+        <img class="h-14 w-14 rounded-full object-cover">
+        <div class="min-w-0">
+          <div class="text-sm text-gray-900 truncate js-name"></div>
+          <div class="text-sm text-gray-600 truncate js-title"></div>
+          <div class="text-xs text-gray-700 mt-0.5 js-area"></div>
+        </div>
+      </div>
+      <button class="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1 rounded-xl text-sm bg-black text-white">Message</button>
+    </div>
+  </template>
+
+  <template id="tpl-profile-modal">
+    <div class="absolute inset-0 z-50">
+      <div class="absolute inset-0 bg-black/40 js-close"></div>
+      <div class="absolute inset-x-0 bottom-0 bg-white rounded-t-3xl border-t shadow-2xl max-h-[88%] overflow-auto">
+        <div class="h-14 px-4 border-b flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur z-10">
+          <button class="text-gray-700 js-close">✕</button>
+          <div class="text-sm text-gray-600">Profile</div>
+          <span class="w-6"></span>
+        </div>
+        <div class="px-5 pt-4 pb-2">
+          <div class="text-xs font-semibold text-gray-900 truncate js-handle"></div>
+          <div class="mt-1 flex items-center gap-3">
+            <img class="h-14 w-14 rounded-full object-cover js-avatar">
+            <div class="min-w-0">
+              <div class="text-sm text-gray-900 truncate js-name"></div>
+              <div class="text-sm text-gray-600 truncate js-title"></div>
+              <div class="text-xs text-gray-700 mt-0.5 js-area"></div>
+            </div>
+            <div class="ml-2">
+              <button class="px-3 py-1 rounded-xl text-sm bg-black text-white">Message</button>
+            </div>
+          </div>
+        </div>
+        <div class="px-5 pt-2">
+          <h3 class="text-base font-semibold text-gray-900">About</h3>
+          <p class="mt-2 text-sm text-gray-700 leading-relaxed js-about"></p>
+        </div>
+        <div class="px-5 pt-4 pb-6">
+          <h3 class="text-base font-semibold text-gray-900">Photos</h3>
+          <div class="mt-3 grid grid-cols-3 gap-2">
+            <img class="h-24 w-full object-cover rounded-xl" src="https://images.unsplash.com/photo-1556910096-6f5e72db6809?q=80&w=800&auto=format&fit=crop">
+            <img class="h-24 w-full object-cover rounded-xl" src="https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=800&auto=format&fit=crop">
+            <img class="h-24 w-full object-cover rounded-xl" src="https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=800&auto=format&fit=crop">
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-chat">
+    <div class="relative flex flex-col h-full">
+      <div class="h-16 p-3 border-b bg-white flex items-center gap-2">
+        <div class="font-medium">Messages</div>
+      </div>
+      <div class="flex-1 overflow-auto p-3 pb-36 bg-gray-50 no-scrollbar">
+        <div class="text-center text-xs text-gray-500 mb-2">Today</div>
+        <div class="flex justify-start my-1">
+          <div class="max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow bg-gray-100 rounded-bl-sm">
+            <p>Hi! I found you on idensal.</p>
+            <p class="text-[10px] mt-1 text-gray-500">10:14</p>
+          </div>
+        </div>
+        <div class="flex justify-end my-1">
+          <div class="max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow bg-black text-white rounded-br-sm">
+            <p>Thanks! What date suits?</p>
+            <p class="text-[10px] mt-1 text-gray-200">10:15</p>
+          </div>
+        </div>
+      </div>
+      <div class="absolute bottom-0 left-0 right-0 z-30 p-2 bg-white border-t flex items-center gap-2">
+        <button class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">📎</button>
+        <input class="flex-1 px-3 py-2 bg-gray-100 rounded-xl outline-none text-sm" placeholder="Write a message">
+        <button class="w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center">➤</button>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-jobs">
+    <div class="absolute inset-0 no-scrollbar">
+      <div class="h-14 border-b bg-white/95 backdrop-blur flex items-center px-4">
+        <div class="text-base font-semibold">Jobs</div>
+      </div>
+      <div class="absolute inset-x-0 bottom-0 top-14 overflow-auto p-4">
+        <div class="flex gap-2 mb-3">
+          <div class="flex-1 flex items-center gap-2 bg-white border rounded-2xl px-3 py-2 shadow-sm">
+            <span>🔎</span>
+            <input id="jobs-search" class="flex-1 outline-none text-sm" placeholder="Search jobs">
+          </div>
+          <select id="jobs-city" class="w-[44%] rounded-2xl border px-3 py-2 bg-white text-sm">
+            <option value="">All cities</option>
+            <option>Glasgow</option>
+            <option>Partick</option>
+            <option>City Centre</option>
+          </select>
+        </div>
+        <div id="jobs-list"></div>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-jobs-card">
+    <button class="mb-3 w-full text-left bg-white rounded-2xl border p-3 cursor-pointer group">
+      <div class="flex items-start gap-3">
+        <div class="h-10 w-10 rounded-full bg-gray-200 grid place-items-center text-xs text-gray-700 js-avatar">U</div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center justify-between gap-2">
+            <div class="font-medium text-gray-900 truncate pr-2 js-title"></div>
+            <div class="text-xs text-gray-500 whitespace-nowrap js-date"></div>
+          </div>
+          <div class="text-sm text-gray-600 mt-0.5 truncate js-owner"></div>
+          <div class="text-sm text-gray-700 mt-1 js-city"></div>
+          <div class="text-sm text-gray-800 mt-2 line-clamp-2 js-desc"></div>
+        </div>
+      </div>
+    </button>
+  </template>
+
+  <template id="tpl-profile">
+    <div class="absolute inset-0 overflow-y-auto">
+      <div class="px-5 pt-5 pb-2 flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-gray-900 truncate">@sparkleclean_scotland</h2>
+      </div>
+      <div class="px-5 pb-4 flex items-center gap-4">
+        <div class="h-20 w-20 rounded-full bg-gray-200 ring-2 ring-gray-200 overflow-hidden grid place-items-center text-lg">S</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-base font-medium text-gray-900 truncate">Sparkle Clean</div>
+          <div class="text-sm text-gray-600 truncate">Cleaner</div>
+          <div class="text-xs text-gray-700 mt-0.5">G12</div>
+        </div>
+      </div>
+      <div class="px-5 pt-5">
+        <h3 class="text-base font-semibold text-gray-900">About</h3>
+        <p class="mt-2 text-sm text-gray-700 leading-relaxed">
+          Professional home & Airbnb cleaners covering West End, City Centre, and Partick. Same-day slots available.
+          Fully insured. Eco-friendly options on request.
+        </p>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    // ---- Data ----
+    const PROS = [
+      { handle: "sam.cleaning", name: "Sam Smith", title: "End-of-tenancy specialist", area: "G12", about: "Move-out deep cleans with guaranteed checklist.", avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=400&auto=format&fit=crop" },
+      { handle: "deepgloss.clean", name: "Deep Gloss", title: "Deep Clean Team", area: "G11", about: "Steam & eco products.", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=400&auto=format&fit=crop" },
+      { handle: "mr-fixit", name: "Mr Fixit", title: "Emergency plumber 24/7", area: "G3", about: "Gas Safe partner network.", avatar: "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?q=80&w=400&auto=format&fit=crop" },
+      { handle: "doggo.walks", name: "Doggo Walks", title: "Insured dog walker", area: "G20", about: "GPS-tracked walks.", avatar: "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?q=80&w=400&auto=format&fit=crop" },
+    ];
+
+    const JOBS = [
+      { id: "j1", title: "End of tenancy clean - 2 bed flat", city: "Glasgow", desc: "Deep clean incl. oven, fridge, windows. Next Saturday.", owner: "@westend_landlord", createdAt: Date.now() - 86400000 * 2 },
+      { id: "j2", title: "Jet-wash patio (20m²)", city: "Partick", desc: "Remove moss. Access via side gate.", owner: "@g11_homeowner", createdAt: Date.now() - 86400000 * 5 },
+      { id: "j3", title: "Emergency leak under kitchen sink", city: "City Centre", desc: "Small drip. Tonight if possible.", owner: "@merchant_city_flat", createdAt: Date.now() - 86400000 },
+    ];
+
+    // ---- Simple Router ----
+    const app = document.getElementById('app');
+    const state = {
+      authed: true, // set false to start at login
+      tab: 'Home',
+      selectedPro: null,
+    };
+
+    const el = (html) => {
+      const t = document.createElement('template');
+      t.innerHTML = html.trim();
+      return t.content.firstElementChild;
+    };
+
+    function mountLogin() {
+      app.innerHTML = document.getElementById('tpl-login').innerHTML;
+      const pw = app.querySelector('#login-pw');
+      const toggle = app.querySelector('#login-toggle');
+      toggle.addEventListener('click', () => {
+        pw.type = pw.type === 'password' ? 'text' : 'password';
+        toggle.textContent = pw.type === 'password' ? 'Show' : 'Hide';
+      });
+      app.querySelector('#login-continue').addEventListener('click', () => {
+        state.authed = true; mountShell();
+      });
+      app.querySelector('#login-signup').addEventListener('click', () => mountSignup());
+      app.querySelector('#login-forgot').addEventListener('click', () => mountForgot());
+    }
+
+    function mountSignup() {
+      app.innerHTML = document.getElementById('tpl-signup').innerHTML;
+      app.querySelector('#signup-back').addEventListener('click', () => mountLogin());
+      app.querySelector('#signup-finish').addEventListener('click', () => {
+        state.authed = true; mountShell();
+      });
+    }
+
+    function mountForgot() {
+      app.innerHTML = document.getElementById('tpl-forgot').innerHTML;
+      app.querySelector('#forgot-back').addEventListener('click', () => mountLogin());
+      app.querySelector('#forgot-send').addEventListener('click', () => {
+        alert('Reset link sent (demo)'); mountLogin();
+      });
+    }
+
+    function setActiveTab(tab) {
+      state.tab = tab;
+      const all = app.querySelectorAll('.tab');
+      all.forEach(b => {
+        if (b.dataset.tab === tab) b.classList.add('font-semibold','text-gray-900');
+        else b.classList.remove('font-semibold','text-gray-900');
+        if (b.dataset.tab !== tab) b.classList.add('text-gray-500');
+        else b.classList.remove('text-gray-500');
+      });
+      renderView();
+    }
+
+    function mountShell() {
+      app.innerHTML = document.getElementById('tpl-shell').innerHTML;
+      app.querySelectorAll('.tab').forEach(btn => {
+        btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
+      });
+      setActiveTab(state.tab);
+    }
+
+    function renderView() {
+      const view = app.querySelector('#view');
+      view.innerHTML = '';
+      if (state.tab === 'Home') renderHome(view);
+      if (state.tab === 'Chat') view.appendChild(el(document.getElementById('tpl-chat').innerHTML));
+      if (state.tab === 'Jobs') renderJobs(view);
+      if (state.tab === 'Profile') view.appendChild(el(document.getElementById('tpl-profile').innerHTML));
+    }
+
+    function renderHome(view) {
+      const wrap = el(document.getElementById('tpl-home').innerHTML);
+      const listWrap = wrap.querySelector('#home-list > div');
+      // build cards
+      PROS.forEach(p => {
+        const card = el(document.getElementById('tpl-card').innerHTML);
+        card.querySelector('.text-xs').textContent = '@' + p.handle + '.uk';
+        card.querySelector('.js-name').textContent = p.name;
+        card.querySelector('.js-title').textContent = p.title;
+        card.querySelector('.js-area').textContent = p.area;
+        card.querySelector('img').src = p.avatar;
+        card.addEventListener('click', () => openProfile(p));
+        listWrap.appendChild(card);
+      });
+      view.appendChild(wrap);
+    }
+
+    function openProfile(p) {
+      const modal = el(document.getElementById('tpl-profile-modal').innerHTML);
+      modal.querySelector('.js-handle').textContent = '@' + p.handle + '.uk';
+      modal.querySelector('.js-name').textContent = p.name;
+      modal.querySelector('.js-title').textContent = p.title;
+      modal.querySelector('.js-area').textContent = p.area;
+      modal.querySelector('.js-about').textContent = p.about;
+      modal.querySelector('.js-avatar').src = p.avatar;
+      modal.querySelectorAll('.js-close').forEach(b => b.addEventListener('click', () => modal.remove()));
+      app.querySelector('#view').appendChild(modal);
+    }
+
+    function renderJobs(view) {
+      const node = el(document.getElementById('tpl-jobs').innerHTML);
+      const list = node.querySelector('#jobs-list');
+      function draw(items) {
+        list.innerHTML = '';
+        items.forEach(j => {
+          const row = el(document.getElementById('tpl-jobs-card').innerHTML);
+          row.querySelector('.js-avatar').textContent = (j.owner.replace(/^@/,'')[0] || 'U').toUpperCase();
+          row.querySelector('.js-title').textContent = j.title;
+          row.querySelector('.js-date').textContent = new Date(j.createdAt).toLocaleDateString();
+          row.querySelector('.js-owner').textContent = j.owner;
+          row.querySelector('.js-city').textContent = j.city;
+          row.querySelector('.js-desc').textContent = j.desc;
+          row.addEventListener('click', () => alert('Job details (demo)'));
+          list.appendChild(row);
+        });
+      }
+      draw(JOBS);
+      // filters
+      node.querySelector('#jobs-search').addEventListener('input', (e) => {
+        const q = e.target.value.toLowerCase();
+        const city = node.querySelector('#jobs-city').value;
+        const filtered = JOBS.filter(j =>
+          (!q || (j.title + ' ' + j.desc + ' ' + j.owner).toLowerCase().includes(q)) &&
+          (!city || j.city === city)
+        );
+        draw(filtered);
+      });
+      node.querySelector('#jobs-city').addEventListener('change', (e) => {
+        const q = node.querySelector('#jobs-search').value.toLowerCase();
+        const city = e.target.value;
+        const filtered = JOBS.filter(j =>
+          (!q || (j.title + ' ' + j.desc + ' ' + j.owner).toLowerCase().includes(q)) &&
+          (!city || j.city === city)
+        );
+        draw(filtered);
+      });
+      view.appendChild(node);
+    }
+
+    // Boot
+    if (state.authed) mountShell();
+    else mountLogin();
+  </script>
+</body>
+</html>
