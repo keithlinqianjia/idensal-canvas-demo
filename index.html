@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>idensal – Canvas Demo (Standalone)</title>
+  <meta name="description" content="Standalone demo of the idensal canvas UI for client previews."/>
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React 18 + ReactDOM (CDN UMD builds) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- Babel Standalone to compile JSX/TS in-browser -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    html, body { height: 100%; }
+    body { background: #f8fafc; } /* tailwind gray-50 */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- App Code -->
+  <script type="text/babel" data-presets="env,react,typescript">
+// Idensal Canvas Demo - Standalone
+const { useState, useRef } = React;
+
+/**************** Error Boundary ****************/
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch() {/* no-op */}
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-gray-50 p-4">
+          <div className="mx-auto max-w-[420px] rounded-3xl border bg-white shadow p-4">
+            <div className="font-semibold mb-2">Something went wrong</div>
+            <div className="text-xs text-gray-600 whitespace-pre-wrap">{String(this.state.error || "")}</div>
+            <button className="mt-3 border rounded-xl px-3 py-2" onClick={() => this.setState({ hasError: false, error: null })}>Try again</button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+/**************** Helpers & Data ****************/
+const EMOJI = {
+  "Cleaning": "🧹",
+  "Heating & Gas": "🔥",
+  "Plumbing": "🚰",
+  "Electrical & Smart": "🔌",
+  "Roofing & Gutters": "🏠",
+  "Windows & Doors": "🪟",
+  "Joinery & Finishes": "🪵",
+  "Handyman": "🛠️",
+  "Gardens & Driveways": "🌿",
+  "Removals & Waste": "🚚",
+  "Care (Children & Elderly)": "👶",
+  "Others": "✨",
+};
+const emojiFor = (n) => EMOJI[n] || "✨";
+const idSafe = (s) => String(s).toLowerCase().replace(/[^a-z0-9_-]/gi, "-");
+
+const CATEGORIES_FULL = [
+  { name: "Cleaning", subs: [
+    "Carpet & upholstery","Household cleaning","End of tenancy clean","After builders clean","Gutter/soffit clean","Jet-wash patios/drives","Other"]},
+  { name: "Heating & Gas", subs: [
+    "Boiler service","CP12 (landlord)","Boiler repair callout","TRVs & balancing","System power flush","Smart thermostat fit","Other"]},
+  { name: "Plumbing", subs: [
+    "Emergency leaks","Toilet repair/replace","Shower valve swap","Tap swap (kitchen/bath)","Leak trace & repair","Outdoor tap install","Other"]},
+  { name: "Electrical & Smart", subs: [
+    "EICR (inspection)","Consumer unit upgrade","Electric shower fit","Oven/hob connection","Security/PIR lighting","EV charger install","Other"]},
+  { name: "Roofing & Gutters", subs: [
+    "Gutter clear/repair","Moss remove & treat","Soffit/fascia repair","Velux/skylight reseal","Roof leak repair","Tile/slate replace","Other"]},
+  { name: "Windows & Doors", subs: [
+    "Misted unit replace","Composite door fit","Reseal & draught-proof","Lock/hinge/handle fix","Align/adjust doors","Conservatory repairs","Other"]},
+  { name: "Joinery & Finishes", subs: [
+    "Plaster/skimming","Tiling (kitchen/bath)","Doors/skirting/arches","Stud wall/partition","Laminate/LVT flooring","Painting & decorating","Other"]},
+  { name: "Handyman", subs: [
+    "Draught-proof doors","Silicone/grout refresh","Patch & paint touch-ups","Door plane/hinge/latch","Blinds/curtain tracks","TV mount & shelving","Other"]},
+  { name: "Gardens & Driveways", subs: [
+    "Hedge cut/reduce","Jet-wash drive/patio","Fence/post repair","Garden clear-out","Decking build/repair","Driveway repairs","Other"]},
+  { name: "Removals & Waste", subs: [
+    "Man & van (hourly)","Student/flat moves","Furniture dis/re-assemble","Bulky waste / HIPPO","House/loft/garage clear","Other"]},
+  { name: "Care (Children & Elderly)", subs: [
+    "Babysitting","Holiday/backup cover","SEN-aware support","Elderly companionship","Personal care visits","Other"]},
+  { name: "Others", subs: ["Others"] },
+];
+
+const PROS = [
+  { handle: "sam.cleaning", displayName: "Sam Smith", title: "End-of-tenancy specialist", distance: "0.4 mi", short: "Deep clean • Windows", cat: "Cleaning", subs: ["End of tenancy clean", "Household cleaning"], coords: { x: 32, y: 52 }, about: "Move-out deep cleans with guaranteed checklist.", avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=400&auto=format&fit=crop", postal: "G12 8QQ" },
+  { handle: "deepgloss.clean", displayName: "Deep Gloss", title: "Deep Clean Team", distance: "0.6 mi", short: "Deep clean • Carpets", cat: "Cleaning", subs: ["Carpet & upholstery", "After builders clean"], coords: { x: 45, y: 40 }, about: "Steam & eco products.", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=400&auto=format&fit=crop", postal: "G11 6RN" },
+  { handle: "mr-fixit", displayName: "Mr Fixit", title: "Emergency plumber 24/7", distance: "0.7 mi", short: "Leaks • Drains", cat: "Plumbing", subs: ["Emergency leaks", "Tap swap (kitchen/bath)", "Leak trace & repair"], coords: { x: 42, y: 68 }, about: "Gas Safe partner network.", avatar: "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?q=80&w=400&auto=format&fit=crop", postal: "G3 7QF" },
+  { handle: "doggo.walks", displayName: "Doggo Walks", title: "Insured dog walker", distance: "1.3 mi", short: "Solo & group walks", cat: "Care (Children & Elderly)", subs: ["Elderly companionship"], coords: { x: 70, y: 72 }, about: "GPS-tracked walks.", avatar: "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?q=80&w=400&auto=format&fit=crop", postal: "G20 7AL" }
+];
+
+const toMiles = (d) => parseFloat(String(d).replace(/[^0-9.]/g, "")) || 0;
+
+/**************** Auth Modal ****************/
+function AuthModal({ onClose, onAuthed }){
+  const [step, setStep] = useState("auth");
+  const [mode, setMode] = useState("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [taken, setTaken] = useState(false);
+  const TAKEN = ["sparkleclean", "idensal", "admin", "support", "test"];
+  const canSubmitAuth = !!email && !!password;
+  const checkUsername = (value) => { setChecking(true); setTimeout(() => { const v = (value || "").trim().toLowerCase(); setTaken(v.length > 0 && TAKEN.includes(v)); setChecking(false); }, 200); };
+  const canSubmitClaim = !!username && !taken && !checking && /^[a-z0-9_.]{3,20}$/i.test(username);
+  return (
+    <div className="absolute inset-0 bg-black/40 z-50 grid place-items-center">
+      <div className="w-[92%] max-w-[420px] rounded-2xl bg-white border shadow-xl overflow-hidden">
+        <div className="h-14 px-5 border-b flex items-center justify-between">
+          <div className="font-medium">{step === "auth" ? (mode === "login" ? "Log in" : "Sign up") : "Claim your username"}</div>
+          <button className="text-gray-500" onClick={onClose}>✕</button>
+        </div>
+        {step === "auth" ? (
+          <div className="p-5 space-y-4">
+            <div className="flex gap-2 text-sm">
+              <button className={`px-3 py-1 rounded-full border ${mode==='login' ? 'bg-black text-white' : ''}`} onClick={()=>setMode('login')}>Log in</button>
+              <button className={`px-3 py-1 rounded-full border ${mode==='signup' ? 'bg-black text-white' : ''}`} onClick={()=>setMode('signup')}>Sign up</button>
+            </div>
+            <label className="block text-sm">Email<input className="mt-1 w-full rounded-xl border px-3 py-2" value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="you@email.com" /></label>
+            <label className="block text-sm">Password<input type="password" className="mt-1 w-full rounded-xl border px-3 py-2" value={password} onChange={(e)=>setPassword(e.target.value)} placeholder="••••••••" /></label>
+            <div className="flex items-center justify-between text-sm"><button className="text-blue-600">Forgot password?</button><span className="text-gray-400">or</span></div>
+            <div className="grid grid-cols-2 gap-2"><button className="rounded-xl border px-3 py-2">Apple</button><button className="rounded-xl border px-3 py-2">Google</button></div>
+            <button disabled={!canSubmitAuth} onClick={()=>setStep('claim')} className={`w-full rounded-xl px-4 py-2 ${canSubmitAuth ? 'bg-black text-white' : 'bg-gray-200 text-gray-500'}`}>{mode==='login' ? 'Continue' : 'Create account'}</button>
+          </div>
+        ) : (
+          <div className="p-5 space-y-3">
+            <p className="text-sm text-gray-700">Pick a public username. This becomes your idensal handle.</p>
+            <div className="text-xs text-gray-500">More than 10 chars, letters/numbers/_ or .</div>
+            <div className="text-xs text-gray-500">Format sample: <span className="font-mono text-gray-700">keith.sutherland.uk</span></div>
+            <div className="relative">
+              <input className={`mt-1 w-full rounded-xl border px-3 py-2 pr-10 ${taken ? 'border-red-400' : 'border-gray-300'}`} value={username} onChange={(e)=>{ setUsername(e.target.value); checkUsername(e.target.value); }} placeholder="keith.sutherland" />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm bg-gray-100 text-gray-700 rounded-md px-2 py-0.5">.uk</span>
+            </div>
+            {username && !checking && !taken && /^[a-z0-9_.]{3,20}$/i.test(username) && (<div className="text-xs text-green-600 mt-1">Available</div>)}
+            {checking && <div className="text-xs text-gray-500 mt-1">Checking...</div>}
+            {taken && <div className="text-xs text-red-500 mt-1">That username is taken. Try another.</div>}
+            <button disabled={!canSubmitClaim} onClick={()=> onAuthed({ email, username })} className={`w-full rounded-xl px-4 py-2 ${canSubmitClaim ? 'bg-black text-white' : 'bg-gray-200 text-gray-500'}`}>Finish</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**************** UI Atoms ****************/
+function Card({ pro, onMsg, onSelect }){
+  const occupation = pro.cat === 'Cleaning' ? 'Cleaner' : (pro.occupation || pro.title || '');
+  const outward = (s) => {
+    if (!s) return ""; const str = String(s).trim().toUpperCase(); const parts = str.split(' '); return parts[0] || "";
+  };
+  const areaCode = outward(pro.postcode || pro.postal || pro.postalCode || pro.areaPostcode || pro.area || pro.zip);
+  return (
+    <div className="p-3 border rounded-2xl mb-3 bg-white shadow-sm cursor-pointer relative" onClick={() => onSelect && onSelect(pro)}>
+      <div className="text-xs font-semibold text-gray-900 truncate pr-14">{'@' + pro.handle + '.uk'}</div>
+      <div className="mt-1 flex items-center gap-3 pr-14">
+        {pro.avatar ? (
+          <img src={pro.avatar} alt={pro.displayName} className="h-14 w-14 rounded-full object-cover" />
+        ) : (
+          <div className="h-14 w-14 rounded-full bg-gray-200 grid place-items-center text-base font-medium text-gray-700">{(pro.displayName||"U").slice(0,1)}</div>
+        )}
+        <div className="min-w-0">
+          <div className="text-sm text-gray-900 truncate">{pro.displayName}</div>
+          <div className="text-sm text-gray-600 truncate">{occupation}</div>
+          {areaCode ? (<div className="text-xs text-gray-700 mt-0.5">{areaCode}</div>) : null}
+        </div>
+      </div>
+      <button className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1 rounded-xl text-sm bg-black text-white" onClick={(e)=>{ e.stopPropagation(); onMsg && onMsg(pro); }}>Message</button>
+    </div>
+  );
+}
+
+function Bubble({ me, text, time }){
+  return (
+    <div className={`flex ${me ? "justify-end" : "justify-start"} my-1`}>
+      <div className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow ${me ? "bg-black text-white rounded-br-sm" : "bg-gray-100 rounded-bl-sm"}`}>
+        <p>{text}</p>
+        <p className={`text-[10px] mt-1 ${me ? "text-gray-200" : "text-gray-500"}`}>{time}</p>
+      </div>
+    </div>
+  );
+}
+
+function ImageBubble({ me, url, time }){
+  return (
+    <div className={`flex ${me ? "justify-end" : "justify-start"} my-1`}>
+      <div className={`max-w-[78%] rounded-2xl overflow-hidden text-sm shadow ${me ? "bg-black text-white rounded-br-sm" : "bg-gray-100 rounded-bl-sm"}`}>
+        <img src={url} alt="attachment" className="w-56 h-36 object-cover" />
+        <p className={`text-[10px] mt-0 px-3 py-1 ${me ? "text-gray-200" : "text-gray-500"}`}>{time}</p>
+      </div>
+    </div>
+  );
+}
+
+function MiniAvatar({ handle, src, sizePx = 24, letter }){
+  const sizeStyle = { width: sizePx, height: sizePx };
+  const contentLetter = (letter || (handle || 'U').slice(0,1)).toUpperCase();
+  return src ? (
+    <img src={src} alt={handle || 'avatar'} style={sizeStyle} className="rounded-full object-cover" />
+  ) : (
+    <div style={sizeStyle} className="rounded-full bg-gray-200 grid place-items-center text-[10px] text-gray-700">{contentLetter}</div>
+  );
+}
+
+function SimMap({ pins = [], label = "Centered near your area", you, onSelectPin }){
+  return (
+    <div className="absolute inset-0 bg-blue-50">
+      <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+        <rect x="0" y="0" width="100%" height="100%" fill="#e6f0ff" />
+        <g stroke="#c5d6f5" strokeWidth="2" fill="none" opacity="0.9">
+          <path d="M0,40 C120,60 200,20 420,60" />
+          <path d="M0,200 C160,180 260,220 420,200" />
+          <path d="M60,0 C80,120 140,160 160,300" />
+          <path d="M300,0 C280,100 260,220 240,320" />
+        </g>
+        <g stroke="#d8e5fb" strokeWidth="1" fill="none">
+          <path d="M0,120 L420,120" />
+          <path d="M0,260 L420,260" />
+          <path d="M120,0 L120,360" />
+          <path d="M360,0 L360,360" />
+        </g>
+        <rect x="260" y="140" width="120" height="80" fill="#d0ecff" stroke="#b6daf5" />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center text-gray-600 pointer-events-none select-none">
+        <div className="text-center">
+          <div>📍</div>
+          <div className="text-sm">{label}</div>
+        </div>
+      </div>
+      <div className="absolute inset-0">
+        {you && (
+          <div className="absolute -translate-x-1/2 -translate-y-full" style={{ left: (you.x || 50) + '%', top: (you.y || 50) + '%' }}>
+            <div className="text-blue-700">📍</div>
+          </div>
+        )}
+        {pins.map((p, i) => (
+          <div
+            key={(p.handle || 'p') + i}
+            className="absolute -translate-x-1/2 -translate-y-full cursor-pointer"
+            style={{ left: (((p.coords && p.coords.x) ?? 50) + '%'), top: (((p.coords && p.coords.y) ?? 50) + '%') }}
+            onClick={(e) => { e.stopPropagation(); onSelectPin && onSelectPin(p); }}
+          >
+            <div className="w-max mx-auto -mb-1 select-none text-[10px] font-medium leading-none text-gray-900">
+              {'@' + p.handle + '.uk'}
+            </div>
+            {p.avatar ? (
+              <img
+                src={p.avatar}
+                alt={p.displayName || p.handle}
+                className="h-9 w-9 rounded-full object-cover ring-2 ring-white shadow-md"
+                aria-label="freelancer pin"
+              />
+            ) : (
+              <div
+                className="h-9 w-9 rounded-full bg-gray-200 grid place-items-center text-[11px] text-gray-700 ring-2 ring-white shadow-md"
+                aria-label="freelancer pin"
+              >
+                {((p.displayName || p.handle || 'U').slice(0,1)).toUpperCase()}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**************** Jobs: Modal & List ****************/
+function JobModal({ open, onClose, onCreate }){
+  const [title, setTitle] = useState("");
+  const [city, setCity] = useState("");
+  const [desc, setDesc] = useState("");
+  if (!open) return null;
+  const canCreate = title.trim() && city.trim();
+  const submit = () => { if (!canCreate) return; onCreate && onCreate({ title: title.trim(), city: city.trim(), description: desc.trim() }); };
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative w-[92%] max-w-[420px] rounded-2xl bg-white border shadow-xl overflow-hidden">
+        <div className="h-14 px-5 border-b flex items-center justify-between">
+          <div className="font-medium">Post a job</div>
+          <button className="text-gray-500" onClick={onClose}>✕</button>
+        </div>
+        <div className="p-5 space-y-3 text-sm">
+          <label className="block">
+            <span className="text-gray-700">Job title</span>
+            <input className="mt-1 w-full rounded-xl border px-3 py-2" value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="End of tenancy clean" />
+          </label>
+          <label className="block">
+            <span className="text-gray-700">City</span>
+            <input className="mt-1 w-full rounded-xl border px-3 py-2" value={city} onChange={(e)=>setCity(e.target.value)} placeholder="Glasgow" />
+          </label>
+          <label className="block">
+            <span className="text-gray-700">Description</span>
+            <textarea rows={4} className="mt-1 w-full rounded-xl border px-3 py-2" value={desc} onChange={(e)=>setDesc(e.target.value)} placeholder="Brief scope, dates, special notes" />
+          </label>
+          <div className="pt-2 flex gap-2 justify-end">
+            <button className="rounded-xl border px-4 py-2" onClick={onClose}>Cancel</button>
+            <button disabled={!canCreate} className={`rounded-xl px-4 py-2 ${canCreate ? 'bg-black text-white' : 'bg-gray-200 text-gray-500'}`} onClick={submit}>Post</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function JobsTab({ jobs, isLoggedIn, userRole, currentHandle, currentAvatar, onRequireLogin, onApply }){
+  const [q, setQ] = useState("");
+  const [city, setCity] = useState("");
+  const [selected, setSelected] = useState(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [applyBusy, setApplyBusy] = useState(false);
+  const cities = Array.from(new Set(jobs.map((j) => j.city))).sort();
+  const filtered = jobs.filter((j) => {
+    const okQ = q ? ((j.title + ' ' + (j.description||'') + ' ' + (j.ownerHandle||'')).toLowerCase().includes(q.toLowerCase())) : true;
+    const okC = city ? (j.city === city) : true;
+    return okQ && okC;
+  });
+  const alreadyApplied = (job) => {
+    const me = String(currentHandle||'').replace(/^@/, '');
+    return Array.isArray(job.applicants) && job.applicants.some((a)=> String(a.handle||'')===me);
+  };
+  const triggerApply = () => {
+    if (!selected) return;
+    if (!isLoggedIn) { onRequireLogin && onRequireLogin({ type: 'applyJob', job: selected }); return; }
+    if (userRole !== 'seller') {
+      onRequireLogin && onRequireLogin({ type: 'applyJob', job: selected });
+      return;
+    }
+    setConfirmOpen(true);
+  };
+  const confirmApply = async () => {
+    try {
+      setApplyBusy(true);
+      const me = {
+        handle: String(currentHandle||'').replace(/^@/, ''),
+        displayName: 'You',
+        avatar: currentAvatar || undefined,
+        time: Date.now()
+      };
+      onApply && onApply(selected.id, me);
+      setApplyBusy(false);
+      setConfirmOpen(false);
+      alert('Application submitted. Your profile has been shared with the job poster.');
+    } catch(_) { setApplyBusy(false); }
+  };
+  return (
+    <div className="absolute inset-0 no-scrollbar">
+      <div className="h-14 border-b bg-white/95 backdrop-blur flex items-center px-4"><div className="text-base font-semibold">Jobs</div></div>
+      <div className="absolute inset-x-0 bottom-0 top-14 overflow-auto p-4">
+        <div className="flex gap-2 mb-3">
+          <div className="flex-1 flex items-center gap-2 bg-white border rounded-2xl px-3 py-2 shadow-sm"><span>🔎</span><input value={q} onChange={(e)=>setQ(e.target.value)} className="flex-1 outline-none text-sm" placeholder="Search jobs" /></div>
+          <select className="w-[44%] rounded-2xl border px-3 py-2 bg-white text-sm" value={city} onChange={(e)=>setCity(e.target.value)}>
+            <option value="">All cities</option>
+            {cities.map((c) => (<option key={c} value={c}>{c}</option>))}
+          </select>
+        </div>
+        {filtered.length === 0 ? (
+          <div className="text-sm text-gray-600">No jobs yet. (Sample jobs appear once you log in or post.)</div>
+        ) : (
+          filtered.map((j) => (
+            <button key={j.id} onClick={() => setSelected(j)} className="mb-3 w-full text-left bg.white rounded-2xl border p-3 cursor-pointer group">
+              <div className="flex items-start gap-3">
+                {j.ownerAvatar ? (
+                  <img src={j.ownerAvatar} alt={j.ownerHandle || 'avatar'} className="h-10 w-10 rounded-full object-cover" />
+                ) : (
+                  <div className="h-10 w-10 rounded-full bg-gray-200 grid place-items-center text-xs text-gray-700">{(j.ownerHandle || '@u').replace(/^@/, '').slice(0,1).toUpperCase()}</div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-medium text-gray-900 truncate pr-2">{j.title}</div>
+                    <div className="text-xs text-gray-500 whitespace-nowrap">{new Date(j.createdAt).toLocaleDateString()}</div>
+                  </div>
+                  <div className="text-sm text.gray-600 mt-0.5 truncate">{j.ownerHandle || '@unknown'}</div>
+                  <div className="text-sm text-gray-700 mt-1">{j.city}</div>
+                  {j.description ? (<div className="text-sm text-gray-800 mt-2 line-clamp-2">{j.description}</div>) : null}
+                </div>
+              </div>
+            </button>
+          ))
+        )}
+      </div>
+      {selected ? (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setSelected(null)} />
+          <div className="absolute inset-x-0 bottom-0 max-w-[480px] mx-auto bg-white rounded-t-3xl border-t shadow-2xl">
+            <div className="h-14 px-4 border-b flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur z-10">
+              <div className="font-medium">Job</div>
+              <button className="text-gray-700" onClick={() => setSelected(null)} aria-label="Close">✕</button>
+            </div>
+            <div className="p-4">
+              <div className="flex items-start gap-3">
+                {selected.ownerAvatar ? (
+                  <img src={selected.ownerAvatar} alt={selected.ownerHandle || 'avatar'} className="h-12 w-12 rounded-full object-cover" />
+                ) : (
+                  <div className="h-12 w-12 rounded-full bg-gray-200 grid place-items-center text-sm text-gray-700">{(selected.ownerHandle || '@u').replace(/^@/, '').slice(0,1).toUpperCase()}</div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="text-base font-semibold text-gray-900">{selected.title}</div>
+                  <div className="text-sm text-gray-600">{selected.ownerHandle || '@unknown'}</div>
+                  <div className="text-sm text-gray-700 mt-1">{selected.city}</div>
+                  {selected.description ? (<div className="text-sm text-gray-800 mt-3 whitespace-pre-wrap">{selected.description}</div>) : null}
+                </div>
+              </div>
+              <div className="mt-4 flex items-center justify-between">
+                <div className="text-xs text-gray-600">Applicants: {(selected.applicants||[]).length}</div>
+                <button disabled={alreadyApplied(selected)} onClick={triggerApply} className={`px-3 py-2 rounded-xl text-sm ${alreadyApplied(selected) ? 'bg-gray-200 text-gray-500' : 'bg-black text-white'}`}>
+                  {alreadyApplied(selected) ? 'Applied' : 'Submit job application'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {confirmOpen ? (
+        <div className="fixed inset-0 z-[60] grid place-items-center">
+          <div className="absolute inset-0 bg-black/40" onClick={()=>setConfirmOpen(false)} />
+          <div className="relative w-[92%] max-w-[420px] rounded-2xl bg-white border shadow-xl overflow-hidden">
+            <div className="h-14 px-5 border-b flex items-center justify-between">
+              <div className="font-medium">Confirm submission</div>
+              <button className="text-gray-500" onClick={()=>setConfirmOpen(false)}>✕</button>
+            </div>
+            <div className="p-5 space-y-3 text-sm">
+              <p>Your application will be sent to the job poster.</p>
+              <p className="text-gray-700">Your idensal profile (handle, name, avatar) will be shared with the job poster.</p>
+              <div className="flex gap-2 justify-end pt-2">
+                <button className="rounded-xl border px-4 py-2" onClick={()=>setConfirmOpen(false)}>Cancel</button>
+                <button disabled={applyBusy} className={`rounded-xl px-4 py-2 ${applyBusy ? 'bg-gray-200 text-gray-500' : 'bg-black text-white'}`} onClick={confirmApply}>{applyBusy ? 'Submitting…' : 'Submit'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ProfileModal({ pro, onClose, onMsg, youCats = [], youSubs = {}, youHandle = "", isLoggedIn = false }){
+  if(!pro) return null;
+  const handle = "@" + pro.handle + ".uk";
+  const occupation = pro.cat === 'Cleaning' ? 'Cleaner' : (pro.occupation || pro.title || '');
+  const outward = (s) => { if (!s) return ""; const str = String(s).trim().toUpperCase(); const parts = str.split(' '); return parts[0] || ""; };
+  const areaCode = outward(pro.postcode || pro.postal || pro.postalCode || pro.areaPostcode || pro.area || pro.zip);
+  const [expanded, setExpanded] = React.useState(false);
+  const pics = [
+    "https://images.unsplash.com/photo-1556910096-6f5e72db6809?q=80&w=800&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=800&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=800&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?q=80&w=800&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?q=80&w=800&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1530023367847-a683933f4177?q=80&w=800&auto=format&fit=crop",
+  ];
+  const moreFallback = "We bring our own supplies, are DBS-checked, insured up to GBP 2M, and can provide invoices for tenancies or HMRC. We handle regular weekly cleans, Airbnb turnovers, post-builders, and end-of-tenancy. Eco-friendly options on request. Pets okay.";
+  const aboutBase = pro.about || "This provider hasn't added an about yet.";
+  const aboutLong = (pro.about_more ? (aboutBase + " " + pro.about_more) : (aboutBase + " " + moreFallback)).trim();
+  const aboutShown = expanded ? aboutLong : (aboutLong.length > 260 ? (aboutLong.slice(0, 260) + "…") : aboutLong);
+  return (
+    <div className="absolute inset-0 z-50">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-3xl border-t shadow-2xl max-h-[88%] overflow-auto">
+        <div className="h-14 px-4 border-b flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur z-10">
+          <button aria-label="Close" className="text-gray-700" onClick={onClose}>✕</button>
+          <div className="text-sm text-gray-600">Profile</div>
+          <span className="w-6" />
+        </div>
+        <div className="px-5 pt-4 pb-2 relative">
+          <div className="text-xs font-semibold text-gray-900 truncate">{handle}</div>
+          <div className="mt-1 flex items-center gap-3">
+            {pro.avatar ? (
+              <img src={pro.avatar} alt={pro.displayName} className="h-14 w-14 rounded-full object-cover" />
+            ) : (
+              <div className="h-14 w-14 rounded-full bg-gray-200 grid place-items-center text-base font-medium text-gray-700">{(pro.displayName||"U").slice(0,1)}</div>
+            )}
+            <div className="min-w-0">
+              <div className="text-sm text-gray-900 truncate">{pro.displayName}</div>
+              <div className="text-sm text-gray-600 truncate">{occupation}</div>
+              {areaCode ? (<div className="text-xs text-gray-700 mt-0.5">{areaCode}</div>) : null}
+            </div>
+            <div className="ml-2 flex items-center">
+              <button className="px-3 py-1 rounded-xl text-sm bg-black text-white" onClick={()=>onMsg && onMsg(pro)}>Message</button>
+            </div>
+          </div>
+        </div>
+        <div className="px-5 pt-2">
+          <h3 className="text-base font-semibold text-gray-900">About</h3>
+          <p className="mt-2 text-sm text-gray-700 leading-relaxed">{aboutShown}</p>
+          {aboutLong.length > 260 && (
+            <button className="mt-1 text-sm text-blue-600" onClick={()=>setExpanded(!expanded)}>{expanded ? 'Show less' : 'Show more'}</button>
+          )}
+        </div>
+        <div className="px-5 pt-4 pb-6">
+          <h3 className="text-base font-semibold text-gray-900">Photos</h3>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {pics.map((src,i)=> (<img key={i} src={src} alt={"Photo "+(i+1)} className="h-24 w-full object-cover rounded-xl" />))}
+          </div>
+        </div>
+        <div className="px-5 pt-0 pb-6">
+          <h3 className="text-base font-semibold text-gray-900">Categories</h3>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(() => {
+              const yh = String(youHandle || "");
+              const norm = yh.replace(/^@/, "").replace(/^@/, "").split('.uk').shift();
+              const isOwn = !!(pro && pro.handle && norm && (pro.handle === norm));
+              if (isOwn) {
+                const subs = [];
+                try {
+                  const obj = youSubs || {};
+                  Object.keys(obj).forEach(k => {
+                    const set = obj[k];
+                    if (set && typeof set.forEach === "function") {
+                      set.forEach((v) => { if (v) subs.push(v); });
+                    }
+                  });
+                } catch (_) {}
+                return (subs.length ? subs : ["Add selections in Edit"]).map((s, i) => (
+                  <span key={s + i} className="inline-flex items-center rounded-full border border-gray-300 px-3 py-1 text-sm text-gray-800">{s}</span>
+                ));
+              }
+              const list = Array.isArray(pro.cats) ? pro.cats : [pro.cat];
+              return (list || []).filter(Boolean).map((c) => (
+                <span key={c} className="inline-flex items-center rounded-full border border-gray-300 px-3 py-1 text-sm text-gray-800">{c}</span>
+              ));
+            })()}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**************** Screens ****************/
+function Home({ onOpenDetail, onMsg, selectedCat, selectedSub, you, onMore, isLoggedIn = false, myProfile = null }){
+  const openDetail = (pro) => { try { if (typeof onOpenDetail === 'function') onOpenDetail(pro); } catch(_) {} };
+  const [youPos, setYouPos] = useState(you || { x: 50, y: 50 });
+  const baseAll = PROS.slice().sort((a, b) => toMiles(a.distance) - toMiles(b.distance));
+  const base = selectedSub
+    ? baseAll.filter((p) => Array.isArray(p.subs) && p.subs.includes(selectedSub))
+    : (selectedCat ? baseAll.filter((p) => p.cat === selectedCat) : baseAll);
+  const list = (isLoggedIn && myProfile) ? [myProfile, ...base] : base;
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const startY = useRef(null);
+  const onTouchStart = (e) => (startY.current = e.touches[0].clientY);
+  const onTouchMove = (e) => { if (startY.current == null) return; const dy = e.touches[0].clientY - startY.current; if (dy < -20) setSheetOpen(true); if (dy > 20) setSheetOpen(false); };
+  const onTouchEnd = () => (startY.current = null);
+  const label = selectedSub ? (selectedSub + " – pins near you") : (selectedCat ? (selectedCat + " – pins near you") : "Centered near your area");
+  return (
+    <div className="relative h-full">
+      <SimMap pins={list} you={youPos} label={label} onSelectPin={openDetail} />
+      <div className="absolute left-0 right-0" style={{ top: 0 }}>
+        <div className="h-14 border-b bg-white/95 backdrop-blur flex items-center justify-between px-4">
+          <div className="text-base font-semibold tracking-tight">idensal</div>
+          <div className="text-xs text-gray-600 whitespace-nowrap">people by area</div>
+        </div>
+        <div className="mx-4 mt-2 flex items-center gap-2 bg-white/95 backdrop-blur border rounded-2xl px-3 py-2 shadow">
+          <span className="text-gray-400">🔎</span>
+          <input className="flex-1 outline-none text-sm text-gray-700 placeholder-gray-400" placeholder="key words (e.g., cleaner, boiler engineer)" />
+        </div>
+        <div className="mt-2 mx-4 flex overflow-x-auto no-scrollbar whitespace-nowrap gap-2">
+          {["Cleaning", "Handyman", "Removals & Waste", "More"].map((n) => (
+            <button key={n} className="flex-none px-3 py-1 rounded-full border text-sm bg:white" onClick={() => { if (n === "More") { onMore && onMore(); } }}>
+              {n === "More" ? "➕ More" : (emojiFor(n) + " " + n)}
+            </button>
+          ))}
+        </div>
+      </div>
+      <button aria-label="Centre map" className="absolute right-4 z-20 w-10 h-10 rounded-full border bg-white shadow flex items-center justify-center" onClick={() => setYouPos({ x: 50, y: 50 })} title="Centre me" style={{ bottom: (sheetOpen ? '62%' : '190px') }}>➤</button>
+      <div className="absolute left-0 right-0 bottom-0 z-10">
+        <div className="overflow-auto no-scrollbar rounded-t-2xl bg-white/95 backdrop-blur border-t p-3 shadow-xl" style={{ height: sheetOpen ? "60%" : 170 }} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+          <div className="flex justify-center"><button onClick={() => setSheetOpen(!sheetOpen)} className="h-1.5 w-10 bg-gray-300 rounded-full mb-2" aria-label="Expand results" /></div>
+          {list.length === 0 ? (<div className="text-sm text-gray-600">No freelancers for this subcategory yet.</div>) : list.map((p) => (<Card key={p.handle} pro={p} onMsg={onMsg} onSelect={openDetail} />))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Categories({ onPick }){
+  const [q, setQ] = useState("");
+  const cats = Array.isArray(CATEGORIES_FULL) ? CATEGORIES_FULL : [];
+  const [open, setOpen] = useState(cats.length ? cats[0].name : "");
+  const filtered = cats
+    .map((cat) => ({
+      ...cat,
+      show: q ? (cat.name.toLowerCase().includes(q.toLowerCase()) || (Array.isArray(cat.subs) && cat.subs.some((s) => s.toLowerCase().includes(q.toLowerCase())))) : true,
+      subs: q ? (Array.isArray(cat.subs) ? cat.subs.filter((s) => s.toLowerCase().includes(q.toLowerCase())) : []) : (Array.isArray(cat.subs) ? cat.subs : []),
+    }))
+    .filter((c) => c.show);
+  return (
+    <div className="absolute inset-0 no-scrollbar">
+      <div className="h-14 border-b bg-white/95 backdrop-blur flex items-center px-4"><div className="text-base font-semibold">Categories</div></div>
+      <div className="absolute inset-x-0 bottom-0 top-14 overflow-auto p-4">
+        <div className="flex items-center gap-2 bg-white border rounded-2xl px-3 py-2 shadow-sm mb-3"><span>🔎</span><input value={q} onChange={(e) => setQ(e.target.value)} className="flex-1 outline-none text-sm" placeholder="Search categories & subs" /></div>
+        {filtered.length === 0 ? (
+          <div className="text-sm text-gray-600">No categories available.</div>
+        ) : (
+          filtered.map((cat) => (
+            <div key={cat.name} className="mb-3 bg-white rounded-2xl border overflow-hidden">
+              <div className="p-3 flex items-center justify-between cursor-pointer" onClick={() => setOpen(open === cat.name ? "" : cat.name)}>
+                <div className="font-medium">{emojiFor(cat.name)} {cat.name}</div>
+                <div className="w-8 h-8 rounded-full border flex items-center justify-center bg-gray-50">{open === cat.name ? "–" : "+"}</div>
+              </div>
+              {open === cat.name && (
+                <div className="px-3 pb-3 flex flex-wrap">
+                  {(cat.subs || []).map((s) => (
+                    <button key={s} onClick={() => onPick(cat.name, s)} className="px-3 py-1 rounded-full border text-sm mr-2 mb-2 bg-white">{s}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Messages({ onVisitProfile }){
+  const [view, setView] = useState("thread");
+  const [active, setActive] = useState({ handle: "sam.cleaning" });
+  const [draft, setDraft] = useState("");
+  const [items, setItems] = useState([
+    { type: "text", me: false, text: "Hi! I found you on idensal.", time: "10:14" },
+    { type: "text", me: true, text: "Thanks! What date suits?", time: "10:15" },
+  ]);
+  const [blocked, setBlocked] = useState(false);
+  const [showActions, setShowActions] = useState(false);
+  const fileRef = useRef(null);
+  const attach = () => { if (fileRef && fileRef.current) fileRef.current.click(); };
+  const onFile = (e) => { try { const f = e.target && e.target.files && e.target.files[0]; if (!f) return; const url = (window && window.URL && window.URL.createObjectURL) ? URL.createObjectURL(f) : ""; if (!url) return; setItems((prev) => prev.concat([{ type: 'image', me: true, url, time: 'now' }])); } finally { if (e && e.target) e.target.value=""; } };
+  const send = () => { if (blocked) { try { window && window.alert && window.alert('You have blocked this user.'); } catch(_) {} return; } if (!draft.trim()) return; setItems((prev) => prev.concat([{ type: 'text', me: true, text: draft.trim(), time: 'now' }])); setDraft(""); };
+  const openThread = (h) => { setActive({ handle: h }); setView("thread"); setBlocked(false); setShowActions(false); };
+  const [locBusy, setLocBusy] = useState(false);
+  const proForActive = PROS.find(p => p.handle === active.handle);
+  const shareLocation = () => {
+    try {
+      setLocBusy(true);
+      if (navigator && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(({ coords }) => {
+          const { latitude, longitude } = coords || {};
+          const lat = latitude && latitude.toFixed ? latitude.toFixed(5) : latitude;
+          const lon = longitude && longitude.toFixed ? longitude.toFixed(5) : longitude;
+          setItems((prev) => prev.concat([{ type: 'text', me: true, text: `Shared location: ${lat}, ${lon}`, time: 'now' }]));
+          setLocBusy(false);
+        }, () => {
+          setItems((prev) => prev.concat([{ type: 'text', me: true, text: 'Shared location (permission denied)', time: 'now' }]));
+          setLocBusy(false);
+        });
+      } else {
+        setItems((prev) => prev.concat([{ type: 'text', me: true, text: 'Shared location (unsupported)', time: 'now' }]));
+        setLocBusy(false);
+      }
+    } catch (_) { setLocBusy(false); }
+  };
+  return (
+    <div className="relative flex flex-col h-full">
+      <div className="h-16 p-3 border-b bg-white flex items-center gap-2">
+        {view === "thread" && (<button onClick={() => setView("inbox")} className="text-gray-600">←</button>)}
+        {view === "inbox" ? (
+          <div className="font-medium">Messages</div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <MiniAvatar handle={active.handle} src={proForActive && proForActive.avatar} sizePx={24} />
+            <div className="leading-tight">
+              <div className="font-medium">{'@' + active.handle + '.uk'}</div>
+              <button className="text-[11px] text-blue-600 hover:underline" onClick={() => onVisitProfile && onVisitProfile(active.handle)}>Visit profile</button>
+            </div>
+          </div>
+        )}
+        <div className="ml-auto flex items-center gap-2">
+          <button className="w-8 h-8 rounded-full border flex items-center justify-center" onClick={()=> setShowActions(v=>!v)} aria-label="Safety actions">🚫</button>
+          {showActions && (
+            <>
+              <button className="px-3 py-1 rounded-xl text-sm border" onClick={()=>{ try { const ok = window && window.confirm ? window.confirm('Block this user?') : true; if (ok) setBlocked(true); } catch(_) {} }} disabled={blocked}>{blocked ? 'Blocked' : 'Block'}</button>
+              <button className="px-3 py-1 rounded-xl text-sm border" onClick={()=>{ try { window && window.alert && window.alert('Reported to idensal.'); } catch(_) {} setShowActions(false); }}>Report</button>
+            </>
+          )}
+        </div>
+      </div>
+      {view === "inbox" ? (
+        <div className="flex-1 overflow-auto p-2 bg-gray-50 no-scrollbar">
+          {["sam.cleaning", "mr-fixit", "doggo.walks"].map((h) => {
+            const p = PROS.find(pp => pp.handle === h) || {};
+            return (
+              <div key={h} onClick={() => openThread(h)} className="bg-white rounded-2xl border p-3 mb-2 cursor-pointer">
+                <div className="flex items-center gap-3">
+                  <MiniAvatar handle={h} src={p.avatar} sizePx={32} />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium">{'@' + h + '.uk'}</div>
+                    <div className="text-sm text-gray-600 truncate">Last message…</div>
+                  </div>
+                  <div className="text-xs text-gray-400 ml-2">10:18</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex-1 overflow-auto p-3 pb-36 bg-gray-50 no-scrollbar">
+          <div className="text-center text-xs text-gray-500 mb-2">Today</div>
+          {items.map((it, idx) => it.type === "image" ? (<ImageBubble key={idx} me={it.me} url={it.url} time={it.time} />) : (<Bubble key={idx} me={it.me} text={it.text} time={it.time} />))}
+        </div>
+      )}
+      {view === "thread" && (
+        <div className="absolute bottom-0 left-0 right-0 z-30 p-2 bg-white border-t flex items-center gap-2">
+          <button onClick={attach} className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">📎</button>
+          <button onClick={shareLocation} className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center" title="Share location" aria-label="Share location">{locBusy ? '…' : '📍'}</button>
+          <input type="file" accept="image/*" ref={fileRef} className="hidden" onChange={onFile} />
+          <input value={draft} onChange={(e) => setDraft(e.target.value)} className="flex-1 px-3 py-2 bg-gray-100 rounded-xl outline-none text-sm" placeholder="Write a message" />
+          <button onClick={send} className="w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center">➤</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**************** Role Select Modal ****************/
+function RoleModal({ onPick, onClose }){
+  return (
+    <div className="absolute inset-0 bg-black/40 z-50 grid place-items-center">
+      <div className="w-[92%] max-w-[420px] rounded-2xl bg-white border shadow-xl overflow-hidden">
+        <div className="h-14 px-5 border-b flex items-center justify-between">
+          <div className="font-medium">Tell us who you are</div>
+          <button className="text-gray-500" onClick={onClose}>✕</button>
+        </div>
+        <div className="p-5 space-y-3 text-sm">
+          <p className="text-gray-700">Are you here as a client looking to book services, or a seller offering services?</p>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <button className="rounded-xl border px-4 py-3" onClick={() => onPick && onPick('client')}>I'm a Client</button>
+            <button className="rounded-xl border px-4 py-3" onClick={() => onPick && onPick('seller')}>I'm a Seller</button>
+          </div>
+          <p className="text-[11px] text-gray-500">You can change this later in settings.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**************** Placeholder Screen ****************/
+function Dashboard({ jobs, currentHandle, onVisitProfile }){
+  const mine = jobs.filter((j)=> String(j.ownerHandle||'') === String(currentHandle||''));
+  const [selected, setSelected] = useState(null);
+  const [showApps, setShowApps] = useState(true);
+  return (
+    <div className="absolute inset-0">
+      <div className="h-14 p-3 border-b bg-white flex items-center"><div className="font-medium">Dashboard</div></div>
+      <div className="absolute inset-x-0 bottom-0 top-14 overflow-auto p-4">
+        {mine.length === 0 ? (
+          <div className="text-sm text-gray-600">No posted jobs yet. Post a job from your Profile.</div>
+        ) : (
+          mine.map((j)=>(
+            <button key={j.id} className="bg-white rounded-2xl border p-3 mb-3 w-full text-left" onClick={()=>{ setSelected(j); setShowApps(true); }}>
+              <div className="flex items-start gap-3">
+                {j.ownerAvatar ? (
+                  <img src={j.ownerAvatar} alt={j.ownerHandle || 'avatar'} className="h-10 w-10 rounded-full object-cover" />
+                ) : (
+                  <div className="h-10 w-10 rounded-full bg-gray-200 grid place-items-center text-xs text-gray-700">{(j.ownerHandle || '@u').replace(/^@/, '').slice(0,1).toUpperCase()}</div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium text-gray-900 truncate pr-2">{j.title}</div>
+                    <div className="text-xs text-gray-500">{new Date(j.createdAt).toLocaleDateString()}</div>
+                  </div>
+                  <div className="text-sm text-gray-700">{j.city}</div>
+                  {j.description ? (<div className="text-sm text-gray-800 mt-1 line-clamp-2">{j.description}</div>) : null}
+                </div>
+              </div>
+            </button>
+          ))
+        )}
+      </div>
+      {selected ? (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setSelected(null)} />
+          <div className="absolute inset-x-0 bottom-0 max-w-[480px] mx-auto bg-white rounded-t-3xl border-t shadow-2xl">
+            <div className="h-14 px-4 border-b flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur z-10">
+              <div className="font-medium">Job</div>
+              <button className="text-gray-700" onClick={() => setSelected(null)} aria-label="Close">✕</button>
+            </div>
+            <div className="p-4">
+              <div className="flex items-start gap-3">
+                {selected.ownerAvatar ? (
+                  <img src={selected.ownerAvatar} alt={selected.ownerHandle || 'avatar'} className="h-12 w-12 rounded-full object-cover" />
+                ) : (
+                  <div className="h-12 w-12 rounded-full bg-gray-200 grid place-items-center text-sm text-gray-700">{(selected.ownerHandle || '@u').replace(/^@/, '').slice(0,1).toUpperCase()}</div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="text-base font-semibold text-gray-900">{selected.title}</div>
+                  <div className="text-sm text-gray-600">{selected.ownerHandle || '@unknown'}</div>
+                  <div className="text-sm text-gray-700 mt-1">{selected.city}</div>
+                  {selected.description ? (<div className="text-sm text-gray-800 mt-3 whitespace-pre-wrap">{selected.description}</div>) : null}
+                </div>
+              </div>
+              <div className="mt-4">
+                <button className="w-full rounded-xl border px-3 py-2 text-sm" onClick={()=> setShowApps(!showApps)}>
+                  {showApps ? 'Hide applicants' : `Show applicants (${(selected.applicants||[]).length})`}
+                </button>
+                {showApps ? (
+                  <div className="mt-3">
+                    {(!selected.applicants || selected.applicants.length===0) ? (
+                      <div className="text-sm text-gray-600">No applicants yet.</div>
+                    ) : (
+                      selected.applicants.map((a, idx)=>(
+                      <div key={idx} className="flex items-center gap-3 p-2 rounded-xl border mb-2">
+                        {a.avatar ? (
+                          <img src={a.avatar} alt={a.displayName||a.handle} className="h-8 w-8 rounded-full object-cover" />
+                        ) : (
+                          <div className="h-8 w-8 rounded-full bg-gray-200 grid place-items-center text-[11px] text-gray-700">{String(a.displayName||a.handle||'U').slice(0,1).toUpperCase()}</div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-gray-900">@{a.handle}.uk</div>
+                          <div className="text-xs text-gray-600">{a.displayName || 'Applicant'}</div>
+                          <button className="mt-1 text-[11px] text-blue-600 hover:underline" onClick={()=> onVisitProfile && onVisitProfile(a.handle)}>Visit profile</button>
+                        </div>
+                        <div className="ml-auto text-right flex flex-col items-end gap-1">
+                          <button className="w-7 h-7 rounded-full border bg-white flex items-center justify-center" title="Favourite">♡</button>
+                          <div className="text-xs text-gray-500">{a.time ? new Date(a.time).toLocaleString() : ''}</div>
+                        </div>
+                      </div>
+                    ))
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**************** Main App ****************/
+function IdensalProfileDemoInner(){
+  const [mode, setMode] = useState("view");
+  const [published, setPublished] = useState(true);
+  const [activeTab, setActiveTab] = useState("Home");
+  const [homeSelectedCat, setHomeSelectedCat] = useState("");
+  const [homeSelectedSub, setHomeSelectedSub] = useState("");
+  const [selectedProfile, setSelectedProfile] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userHandle, setUserHandle] = useState("@sparkleclean_scotland");
+  const [occupation, setOccupation] = useState("Cleaner");
+  const [authOpen, setAuthOpen] = useState(false);
+  const [loginIntent, setLoginIntent] = useState(null);
+  const [roleAskOpen, setRoleAskOpen] = useState(false);
+  const [userRole, setUserRole] = useState(null);
+  const [postAuthIntent, setPostAuthIntent] = useState(null);
+  const [selectedCats, setSelectedCats] = useState(new Set(["Cleaning", "Handyman", "Plumbing", "Electrical & Smart"]));
+  const [selectedSubs, setSelectedSubs] = useState({
+    "Cleaning": new Set(["End of tenancy clean", "After builders clean", "Household cleaning", "Jet-wash patios/drives"])
+  });
+  const [catExpanded, setCatExpanded] = useState(false);
+  const [catSearch, setCatSearch] = useState("");
+  const [openHead, setOpenHead] = useState("");
+  const [viewProfile, setViewProfile] = useState(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [publishModalOpen, setPublishModalOpen] = useState(false);
+  const [jobModalOpen, setJobModalOpen] = useState(false);
+  const [catOverlayOpen, setCatOverlayOpen] = useState(false);
+  const SAMPLE_JOBS = [
+  { id: 'j_demo_1', title: 'End of tenancy clean - 2 bed flat', city: 'Glasgow', description: 'Looking for a deep clean before handover. Includes oven, fridge, windows. Parking available. Target date: next Saturday.', createdAt: Date.now() - 86400000*2, ownerRole: 'client', ownerHandle: '@westend_landlord', ownerAvatar: PROS[0]?.avatar || null, applicants: [ { handle: 'sam.cleaning', displayName: 'Sam Smith', avatar: PROS.find(p=>p.handle==='sam.cleaning')?.avatar, time: Date.now() - 3600*1000 } ] },
+  { id: 'j_demo_2', title: 'Jet-wash patio (20m²)', city: 'Partick', description: 'Need patio cleaned, remove moss. Access via side gate.', createdAt: Date.now() - 86400000*5, ownerRole: 'client', ownerHandle: '@g11_homeowner', ownerAvatar: PROS[1]?.avatar || null, applicants: [] },
+  { id: 'j_demo_3', title: 'Emergency leak under kitchen sink', city: 'City Centre', description: 'Small drip, stop tap accessible. Tonight if possible.', createdAt: Date.now() - 86400000, ownerRole: 'client', ownerHandle: '@merchant_city_flat', ownerAvatar: PROS[2]?.avatar || null, applicants: [] },
+  { id: 'j_demo_mine_1', title: 'Weekly clean for 1-bed flat', city: 'Glasgow', description: 'Regular weekly clean, 2 hours, flexible weekday mornings.', createdAt: Date.now() - 86400000*3, ownerRole: 'client', ownerHandle: '@sparkleclean_scotland', ownerAvatar: null, applicants: [ { handle: 'deepgloss.clean', displayName: 'Deep Gloss', avatar: PROS.find(p=>p.handle==='deepgloss.clean')?.avatar, time: Date.now() - 7200*1000 }, { handle: 'sam.cleaning', displayName: 'Sam Smith', avatar: PROS.find(p=>p.handle==='sam.cleaning')?.avatar, time: Date.now() - 3600*1000 }, { handle: 'doggo.walks', displayName: 'Doggo Walks', avatar: PROS.find(p=>p.handle==='doggo.walks')?.avatar, time: Date.now() - 5400*1000 } ] },
+  { id: 'j_demo_mine_2', title: 'Move-out clean (studio)', city: 'Partick', description: 'Studio apartment, include oven + fridge. Keys with concierge.', createdAt: Date.now() - 86400000*7, ownerRole: 'client', ownerHandle: '@sparkleclean_scotland', ownerAvatar: null, applicants: [] }
+];
+const [jobs, setJobs] = useState(SAMPLE_JOBS);
+
+  const [pendingHandle, setPendingHandle] = useState(userHandle);
+  const [handleChecking, setHandleChecking] = useState(false);
+  const [handleTaken, setHandleTaken] = useState(false);
+  const HANDLE_TAKEN = ["sparkleclean", "idensal", "admin", "support", "test"];
+  const handleRegex = /^[a-z0-9_.]{10,}$/i;
+  const checkHandle = (value) => {
+    try {
+      setHandleChecking(true);
+      setTimeout(() => {
+        const v = String(value || "").trim().toLowerCase().replace(/^@/, "").split('.uk').shift();
+        setHandleTaken(!!(v && HANDLE_TAKEN.includes(v)));
+        setHandleChecking(false);
+      }, 200);
+    } catch (_) { setHandleChecking(false); }
+  };
+
+  const toggleSub = (catName, sub) => { const curr = selectedSubs[catName] ? new Set(selectedSubs[catName]) : new Set(); if (curr.has(sub)) curr.delete(sub); else curr.add(sub); setSelectedSubs({ ...selectedSubs, [catName]: curr }); };
+  const filterCats = (list) => { if (!catSearch.trim()) return list; const q = catSearch.toLowerCase(); return list.map((c) => ({ ...c, subs: c.subs.filter((s) => s.toLowerCase().includes(q) ) })).filter((c) => c.name.toLowerCase().includes(q) || c.subs.length > 0); };
+  const requireLoginThen = (intent) => { if (isLoggedIn) { if (intent && intent.type === 'message') { setSelectedProfile(intent.pro); setActiveTab('Chat'); } return; } setLoginIntent(intent); setAuthOpen(true); };
+  const createJob = ({ title, city, description }) => {
+    const job = {
+      id: 'j_' + Math.random().toString(36).slice(2),
+      title, city, description,
+      createdAt: Date.now(),
+      ownerRole: userRole || 'client',
+      ownerHandle: userHandle || '@you',
+      ownerAvatar: avatarUrl || null,
+      applicants: []
+    };
+    setJobs((prev) => [job, ...prev]);
+    setJobModalOpen(false);
+    setActiveTab('Jobs');
+  };
+
+  const renderProfile = () => {
+    const isOwn = isLoggedIn && !selectedProfile;
+    const fallbackPro = selectedProfile || PROS[0];
+    const handle = isOwn ? userHandle : ("@" + fallbackPro.handle + ".uk");
+    const displayName = isOwn ? "Sparkle Clean" : fallbackPro.displayName;
+    const firstLetter = displayName && displayName[0] ? displayName[0] : 'U';
+    const about = isOwn ? "Professional home & Airbnb cleaners covering West End, City Centre, and Partick. Same-day slots available. Fully insured. Eco-friendly options on request." : (fallbackPro.about || (displayName + " • " + fallbackPro.title));
+    return (
+      <div className="absolute inset-0 overflow-y-auto relative">
+        {!isOwn ? (
+          <div className="h-12 px-3 border-b flex items-center">
+            <button aria-label="Back" className="text-gray-700" onClick={() => { setSelectedProfile(null); setActiveTab("Home"); }}>←</button>
+            <div className="ml-3 text-sm text-gray-600">Profile</div>
+          </div>
+        ) : null}
+        <div className="px-5 pt-5 pb-2 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900 truncate">{handle}</h2>
+          {isOwn ? (
+            <div className="relative flex items-center gap-2">
+              <button className="px-3 py-2 rounded-xl text-sm border" onClick={() => setJobModalOpen(true)}>Post job</button>
+              <div className="relative">
+                <button className="px-3 py-2 rounded-xl text-sm bg-white text-gray-800 border" onClick={() => setShareOpen((v) => !v)} aria-haspopup="menu" aria-expanded={shareOpen} title="Menu">
+                  <span className="sr-only">Menu</span>
+                  <span aria-hidden="true" className="flex flex-col items-center justify-center gap-1">
+                    <span className="block w-4 h-0.5 bg-gray-800 rounded" />
+                    <span className="block w-4 h-0.5 bg-gray-800 rounded" />
+                    <span className="block w-4 h-0.5 bg-gray-800 rounded" />
+                  </span>
+                </button>
+                {shareOpen ? (
+                  <div className="absolute right-0 mt-2 w-56 rounded-xl border bg:white shadow-md p-2 z-20">
+                    <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 text-sm" onClick={() => { setPublished(true); setShareOpen(false); }}>Publish profile…</button>
+                    <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 text-sm" onClick={() => { setIsLoggedIn(false); setSelectedProfile(null); setMode('view'); setActiveTab('Home'); setAuthOpen(false); setLoginIntent(null); setShareOpen(false); }}>Log out</button>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+        </div>
+        <div className="px-5 pb-4 flex items-center gap-4">
+          <div className="h-20 w-20 rounded-full bg-gray-200 ring-2 ring-gray-200 overflow-hidden grid place-items-center text-lg">{isOwn && avatarUrl ? (<img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />) : firstLetter}</div>
+          <div className="flex-1 min-w-0">
+            <div className="text-base font-medium text-gray-900 truncate">{displayName}</div>
+            <div className="text-sm text-gray-600 truncate">{isOwn ? occupation : (fallbackPro.occupation || fallbackPro.title)}</div>
+            {isOwn ? (<div className="text-xs text-gray-700 mt-0.5">G12</div>) : null}
+          </div>
+        </div>
+        {isOwn ? (
+          <div className="px-5 pt-3 flex items-center gap-2">
+            <button className="flex-1 px-3 py-2 rounded-xl text-sm border" onClick={() => setMode('edit')}>Edit</button>
+            <button className="flex-1 px-3 py-2 rounded-xl text-sm border" onClick={() => setShareSheetOpen(true)}>Share</button>
+          </div>
+        ) : null}
+        <div className="px-5 pt-5"><h3 className="text-base font-semibold text-gray-900">About</h3><p className="mt-2 text-sm text-gray-700 leading-relaxed">{about}</p></div>
+        <div className="px-5">
+          <div className="flex items-center justify-between"><h3 className="text-base font-semibold text-gray-900">Photos</h3>{isOwn ? (<button className="text-sm text-blue-600 hover:underline">Add</button>) : null}</div>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {["https://images.unsplash.com/photo-1556910096-6f5e72db6809?q=80&w=800&auto=format&fit=crop","https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=800&auto=format&fit=crop","https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?q=80&w=800&auto=format&fit=crop","https://images.unsplash.com/photo-1519710164239-da123dc03ef4?q=80&w=800&auto=format&fit=crop","https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=800&auto=format&fit=crop","https://images.unsplash.com/photo-1530023367847-a683933f4177?q=80&w=800&auto=format&fit=crop"].map((src, i) => (
+              <button key={i} className="group relative overflow-hidden rounded-xl"><img src={src} alt={"Portfolio "+(i + 1)} className="h-24 w-full object-cover transition-transform duration-300 group-hover:scale-105" /></button>
+            ))}
+          </div>
+        </div>
+        <div className="px-5 py-5"><h3 className="text-base font-semibold text-gray-900">Category</h3>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(() => {
+              try {
+                const subsList = [];
+                const obj = selectedSubs || {};
+                Object.keys(obj).forEach(function(k){
+                  const s = obj[k];
+                  if (s && typeof s.forEach === 'function') { s.forEach((v)=> { if (v) subsList.push(v); }); }
+                });
+                const items = subsList.length ? subsList : ['Add selections in Edit'];
+                return items.map(function(s, i){
+                  return (<span key={s + i} className="inline-flex items-center rounded-full border border-gray-300 px-3 py-1 text-sm text-gray-800">{s}</span>);
+                });
+              } catch (e) {
+                return (<span className="text-sm text-gray-500">No selections</span>);
+              }
+            })()}
+          </div>
+        </div>
+        {shareSheetOpen ? (
+          <div className="fixed inset-0 z-50">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setShareSheetOpen(false)} />
+            <div className="absolute inset-x-0 bottom-0 max-w-[480px] mx-auto bg-white rounded-t-3xl border-t shadow-2xl p-4">
+              <div className="h-10 flex items-center justify-between">
+                <div className="font-medium">Share</div>
+                <button className="text-gray-600" onClick={() => setShareSheetOpen(false)}>✕</button>
+              </div>
+              <div className="mt-2 grid grid-cols-3 gap-3">
+                <div className="col-span-1">
+                  <img src={'https://api.qrserver.com/v1/create-qr-code/?size=512x512&data=' + encodeURIComponent(((window && window.location ? window.location.origin : 'https://idensal.app') + '/' + String(userHandle||'').replace(/^@/, '')))} alt="QR" className="w-full h-auto rounded-xl border" />
+                </div>
+                <div className="col-span-2 text-sm">
+                  <div className="font-medium break-all">{(window && window.location ? window.location.origin : 'https://idensal.app') + '/' + String(userHandle||'').replace(/^@/, '')}</div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button className="rounded-xl border px-3 py-2" onClick={() => {
+                      try {
+                        const url = 'https://api.qrserver.com/v1/create-qr-code/?size=512x512&data=' + encodeURIComponent(((window && window.location ? window.location.origin : 'https://idensal.app') + '/' + String(userHandle||'').replace(/^@/, '')));
+                        const a = document.createElement('a'); a.href = url; a.download = (String(userHandle||'').replace(/^@/, '') || 'idensal-profile') + '-qr.png'; document.body.appendChild(a); a.click(); a.remove();
+                      } catch(_) {}
+                    }}>Download QR</button>
+                    <button className="rounded-xl border px-3 py-2" onClick={async () => {
+                      try {
+                        const link = (window && window.location ? window.location.origin : 'https://idensal.app') + '/' + String(userHandle||'').replace(/^@/, '');
+                        if (navigator && navigator.share) {
+                          await navigator.share({ title: 'idensal profile', url: link });
+                        } else if (navigator && navigator.clipboard) {
+                          await navigator.clipboard.writeText(link);
+                          alert('Link copied');
+                        }
+                      } catch(_) {}
+                    }}>Share link</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  };
+
+  if (mode === "edit") {
+    const totalSelected = Object.values(selectedSubs || {}).reduce((n, set) => {
+      if (!set) return n; if (typeof set.size === 'number') return n + set.size; if (typeof set.forEach === 'function') { let c = 0; set.forEach(()=>c++); return n + c; } return n;
+    }, 0);
+    return (
+      <div className="min-h-screen bg-gray-50 p-4">
+        <div className="mx-auto max-w-[420px] rounded-3xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+          <div className="flex h-[780px] flex-col">
+            <div className="h-14 grid grid-cols-3 items-center px-5 border-b shrink-0">
+              <button className="text-sm text-gray-600" onClick={() => setMode("view")}>← Back</button>
+              <div className="text-center text-sm font-medium text-gray-700">Edit Profile</div>
+              <span />
+            </div>
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="h-20 w-20 rounded-full bg-gray-200 ring-2 ring-gray-200 overflow-hidden grid place-items-center text-lg">
+                  {avatarUrl ? (<img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />) : 'U'}
+                </div>
+                <div>
+                  <input id="avatar-input" type="file" accept="image/*" className="hidden" onChange={(e)=>{ try { const f = e.target && e.target.files && e.target.files[0]; if (!f) return; const url = URL.createObjectURL(f); setAvatarUrl(url); } finally { if (e && e.target) e.target.value=''; } }} />
+                  <label htmlFor="avatar-input" className="inline-flex items-center rounded-xl border px-3 py-2 text-sm cursor-pointer">Edit avatar</label>
+                  {avatarUrl ? (<button type="button" className="ml-2 text-sm text-red-600" onClick={()=>setAvatarUrl(null)}>Remove</button>) : null}
+                </div>
+              </div>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">Handle (username)</span>
+                <div className="relative">
+                  <input
+                    className={`mt-1 w-full rounded-xl border px-3 py-2 pr-36 ${handleTaken ? 'border-red-300' : 'border-gray-300'}`}
+                    value={pendingHandle}
+                    onChange={(e)=>{
+                      const v = e.target.value;
+                      setPendingHandle(v);
+                      const clean = String(v||'').trim().replace(/^@/, '').split('.uk').shift();
+                      if (handleRegex.test(clean || '')) { checkHandle(v); }
+                    }}
+                    placeholder="@your.handle.uk"
+                  />
+                  <span
+                    className={`absolute right-12 top-1/2 -translate-y-1/2 text-xs rounded-md px-2 py-0.5 border ${
+                      handleChecking
+                        ? 'bg-white text-gray-600 border-gray-300'
+                        : (!handleRegex.test(String(pendingHandle||'').trim().replace(/^@/,'').split('.uk').shift() || ''))
+                          ? 'bg-white text-gray-600 border-gray-300'
+                          : (handleTaken ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200')
+                    }`}
+                  >
+                    {(() => {
+                      const clean = String(pendingHandle||'').trim().replace(/^@/, '').split('.uk').shift();
+                      if (!handleRegex.test(clean || '')) return 'Format';
+                      if (handleChecking) return 'Checking…';
+                      if (handleTaken) return 'Taken';
+                      return 'Available';
+                    })()}
+                  </span>
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs bg-gray-100 text-gray-700 rounded-md px-2 py-0.5 select-none">.uk</span>
+                </div>
+                <div className="text-[11px] text-gray-500 mt-1">Minimum 10 characters; letters, numbers, _ or . (e.g., keith.sutherland.uk)</div>
+              </label>
+              <label className="block"><span className="text-sm font-medium text-gray-700">Display name</span><input className="mt-1 w-full rounded-xl border px-3 py-2" defaultValue="Sparkle Clean" /></label>
+              <label className="block"><span className="text-sm font-medium text-gray-700">Occupation</span><input className="mt-1 w-full rounded-xl border px-3 py-2" value={occupation} onChange={(e)=>setOccupation(e.target.value)} placeholder="e.g., Cleaner" /></label>
+              <label className="block"><span className="text-sm font-medium text-gray-700">About</span><textarea className="mt-1 w-full rounded-xl border px-3 py-2" rows={4} defaultValue={"Professional home & Airbnb cleaners covering West End, City Centre, and Partick. Same-day slots available. Fully insured. Eco-friendly options on request."} /></label>
+              <div className="pt-2">
+                <div className="text-sm font-medium text-gray-700 mb-2">Categories</div>
+                <button className="w-full rounded-2xl border p-3 text-left flex items-center justify-between" onClick={() => setCatExpanded(!catExpanded)} aria-expanded={catExpanded}><span className="text-sm text-gray-800 truncate pr-3">Categories</span><span className="flex items-center gap-2"><span className="w-8 h-8 rounded-full border grid place-items-center bg-gray-50">{catExpanded ? "–" : "+"}</span><span className="text-xs text-gray-500">({totalSelected} selected)</span></span></button>
+                {catExpanded && (
+                  <div className="mt-3">
+                    <div className="flex items-center gap-2 bg-white border rounded-2xl px-3 py-2 shadow-sm mb-3"><span>🔎</span><input value={catSearch} onChange={(e) => setCatSearch(e.target.value)} className="flex-1 outline-none text-sm" placeholder="Search categories or subcategories" /></div>
+                    <div className="bg-white rounded-2xl border overflow-hidden">
+                      {filterCats(CATEGORIES_FULL).map((cat, idx) => {
+                        const open = openHead === cat.name;
+                        const subsSet = selectedSubs[cat.name] || new Set();
+                        return (
+                          <div key={cat.name} className={idx > 0 ? "border-t" : ""}>
+                            <div className="p-3 flex items-center justify-between">
+                              <button className="text-left font-medium flex-1" onClick={() => setOpenHead(open ? "" : cat.name)}>
+                                {emojiFor(cat.name)} {cat.name}
+                                {subsSet.size > 0 ? (<span className="ml-2 text-xs text-gray-500">({subsSet.size} selected)</span>) : null}
+                              </button>
+                              <button className="ml-2 w-8 h-8 rounded-full border flex items-center justify-center bg-gray-50" onClick={() => setOpenHead(open ? "" : cat.name)} aria-expanded={open} aria-controls={'subs-'+idSafe(cat.name)}>{open ? "–" : "+"}</button>
+                            </div>
+                            {open ? (
+                              <div id={'subs-'+idSafe(cat.name)} className="px-3 pb-3 flex flex-wrap gap-2">
+                                {cat.subs.map((s) => {
+                                  const subsSet2 = selectedSubs[cat.name] || new Set();
+                                  const active = subsSet2.has(s);
+                                  return (
+                                    <button key={s} onClick={() => toggleSub(cat.name, s)} className={`px-3 py-1 rounded-full border text-sm ${active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-800'}`} aria-pressed={active}>
+                                      {s}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="text-sm font-medium text-gray-700 mb-2">Pin your service area</div>
+                <div className="relative h-48 w-full rounded-2xl border overflow-hidden">
+                  {(() => {
+                    const norm = String(pendingHandle || '').replace(/^@/, '').split('.uk').shift();
+                    const labelText = '@' + norm + '.uk — your pinned area';
+                    return (
+                      <SimMap
+                        pins={[{ handle: norm, displayName: 'You', avatar: avatarUrl || null, coords: { x: 50, y: 50 } }]}
+                        label={labelText}
+                      />
+                    );
+                  })()}
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2 pb-6"><button className="rounded-xl bg-black px-4 py-2 text-white" onClick={() => { setUserHandle(pendingHandle); setMode("view"); }}>Save</button><button className="rounded-xl border px-4 py-2" onClick={() => setMode("view")}>Cancel</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="mx-auto max-w-[420px] rounded-3xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+        <div className="flex h-[780px] flex-col">
+          <div className="flex-1 overflow-hidden relative">
+            {activeTab === "Home" ? (
+              <Home
+                onOpenDetail={(pro) => { setViewProfile(pro); }}
+                onMsg={(pro) => requireLoginThen({ type: 'message', pro })}
+                selectedCat={homeSelectedCat}
+                selectedSub={homeSelectedSub}
+                you={{ x: 46, y: 64 }}
+                onMore={() => setCatOverlayOpen(true)}
+                isLoggedIn={isLoggedIn}
+                myProfile={(() => { if (!isLoggedIn) return null; const norm = String(userHandle||"").replace(/^@/, "").replace(/^@/, "").split('.uk').shift(); return { handle: norm, displayName: "Sparkle Clean", title: occupation, distance: "0.1 mi", short: "Your profile", cat: Array.from(selectedCats)[0] || "Cleaning", cats: Array.from(selectedCats), subs: Array.from(selectedSubs[Array.from(selectedCats)[0] || 'Cleaning'] || new Set()), coords: { x: 46, y: 64 }, postal: "G12 8QQ", avatar: avatarUrl || "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=400&auto=format&fit=crop", about: "This is your live profile." }; })()}
+              />
+            ) : null}
+            {activeTab === "Chat" ? (
+              <Messages onVisitProfile={(h) => {
+                const pro = PROS.find(p => p.handle === h);
+                if (pro) { setViewProfile(pro); }
+              }} />
+            ) : null}
+            {activeTab === "Jobs" ? (
+              <JobsTab
+                jobs={jobs}
+                isLoggedIn={isLoggedIn}
+                userRole={userRole}
+                currentHandle={userHandle}
+                currentAvatar={avatarUrl}
+                onRequireLogin={(intent)=>{ setLoginIntent(intent); setAuthOpen(true); }}
+                onApply={(jobId, applicant)=>{
+                  setJobs((prev)=> prev.map(j => j.id===jobId ? { ...j, applicants: Array.isArray(j.applicants) ? [...j.applicants, applicant] : [applicant] } : j));
+                }}
+              />
+            ) : null}
+            {activeTab === "Dashboard" ? (<Dashboard jobs={jobs} currentHandle={userHandle} onVisitProfile={(h)=>{ const pro = PROS.find(p=>p.handle===h); if (pro) { setViewProfile(pro); } }} />) : null}
+            {activeTab === "Profile" ? (renderProfile()) : null}
+            {viewProfile ? (<ProfileModal pro={viewProfile} onClose={()=>setViewProfile(null)} onMsg={(pro)=>requireLoginThen({ type:'message', pro })} youCats={Array.from(selectedCats)} youSubs={selectedSubs} youHandle={userHandle} isLoggedIn={isLoggedIn} />) : null}
+            {authOpen ? (<AuthModal onClose={() => { setAuthOpen(false); setLoginIntent(null); }} onAuthed={({ email, username }) => { const handle = username ? ("@" + username + ".uk") : userHandle; setUserHandle(handle); setIsLoggedIn(true); setAuthOpen(false); setPostAuthIntent(loginIntent); setRoleAskOpen(true); setLoginIntent(null); }} />) : null}
+            {roleAskOpen ? (<RoleModal onPick={(choice) => { setUserRole(choice); setRoleAskOpen(false); if (postAuthIntent && postAuthIntent.type === 'message' && postAuthIntent.pro) { setSelectedProfile(postAuthIntent.pro); setActiveTab('Chat'); } else if (postAuthIntent && postAuthIntent.type === 'openProfile') { setSelectedProfile(null); setActiveTab('Profile'); } else { setSelectedProfile(null); setActiveTab('Profile'); } setPostAuthIntent(null); }} onClose={() => setRoleAskOpen(false)} />) : null}
+            {publishModalOpen ? (
+              <div className="fixed inset-0 z-50 grid place-items-center">
+                <div className="absolute inset-0 bg-black/40" onClick={() => setPublishModalOpen(false)} />
+                <div className="relative w-[92%] max-w-[420px] rounded-2xl bg-white border shadow-xl overflow-hidden">
+                  <div className="h-14 px-5 border-b flex items-center justify-between">
+                    <div className="font-medium">Publish profile</div>
+                    <button className="text-gray-500" onClick={() => setPublishModalOpen(false)}>✕</button>
+                  </div>
+                  <div className="p-5 space-y-4 text-sm">
+                    <p className="text-gray-700">Would you like to switch your profile ON or OFF?</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button className="rounded-xl border px-4 py-3" onClick={() => { setPublished(true); setPublishModalOpen(false); }}>Switch ON</button>
+                      <button className="rounded-xl border px-4 py-3" onClick={() => { setPublished(false); setPublishModalOpen(false); }}>Switch OFF</button>
+                    </div>
+                    <div className="text-right"><button className="text-xs text-gray-600" onClick={() => setPublishModalOpen(false)}>Cancel</button></div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            <JobModal open={jobModalOpen} onClose={() => setJobModalOpen(false)} onCreate={createJob} />
+            {catOverlayOpen ? (
+              <div className="fixed inset-0 z-50">
+                <div className="absolute inset-0 bg-black/40" onClick={() => setCatOverlayOpen(false)} />
+                <div className="absolute inset-0 bg-white" />
+                <button className="fixed top-3 right-4 z-[60] px-3 py-1 rounded-xl border bg-white" onClick={() => setCatOverlayOpen(false)} aria-label="Close categories">✕</button>
+                <Categories onPick={(cat, sub) => { setHomeSelectedCat(cat); setHomeSelectedSub(sub); setCatOverlayOpen(false); setActiveTab('Home'); }} />
+              </div>
+            ) : null}
+          </div>
+          <nav className="grid grid-cols-5 border-t bg-white">
+            {[{ label: "Home", icon: "🏠" }, { label: "Jobs", icon: "📋" }, { label: "Chat", icon: "💬" }, { label: "Dashboard", icon: "📊" }, { label: "Profile", icon: "👤" }].map((tab) => (
+              <button key={tab.label} onClick={() => { if (tab.label === 'Profile') { if (!isLoggedIn) { setLoginIntent({ type: 'openProfile' }); setAuthOpen(true); } else { setSelectedProfile(null); setActiveTab('Profile'); } } else { setActiveTab(tab.label); } }} className={`h-14 text-xs ${activeTab === tab.label ? "font-semibold text-gray-900" : "text-gray-500"} flex flex-col items-center justify-center gap-0.5`} aria-current={activeTab === tab.label ? "page" : undefined}>
+                <span className="text-lg leading-none">{tab.icon}</span>
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function IdensalProfileDemo(){
+  return (
+    <ErrorBoundary>
+      <IdensalProfileDemoInner />
+    </ErrorBoundary>
+  );
+}
+
+// Mount app
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<IdensalProfileDemo />);
+
+// (Optional) Lightweight sanity checks
+(function devTests(){
+  try {
+    const norm = (h)=> String(h||'').trim().replace(/^@/,'').split('.uk').shift();
+    console.assert(norm('@abc.uk')==='abc', 'norm basic');
+    const handleRegex = /^[a-z0-9_.]{10,}$/i;
+    console.assert(handleRegex.test('keith.sutherland'), 'regex min length & charset');
+  } catch(e){ console.warn('Self-check failed', e); }
+})();
+  </script>
+</body>
+</html>
